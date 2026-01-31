@@ -114,14 +114,16 @@ final class SSHService {
                 .error(error.localizedDescription)
             }
             await MainActor.run {
-                self.state = .disconnected(reason)
-                self.client = nil
-                self.stdinWriter = nil
+                self.handleDisconnection(reason: reason)
             }
         }
     }
 
     private func handleDisconnection(reason: DisconnectReason) {
+        // Don't overwrite userInitiated with sessionEnded from the closing channel
+        if case .disconnected(.userInitiated) = state {
+            return
+        }
         state = .disconnected(reason)
         client = nil
         stdinWriter = nil
@@ -163,11 +165,15 @@ final class SSHService {
         connectionTask?.cancel()
         connectionTask = nil
 
+        // Set state synchronously so it's not overwritten by stream handlers
+        state = .disconnected(.userInitiated)
+        let clientToClose = client
+        client = nil
+        stdinWriter = nil
+        onDisconnect?()
+
         Task {
-            try? await client?.close()
-            await MainActor.run {
-                self.handleDisconnection(reason: .userInitiated)
-            }
+            try? await clientToClose?.close()
         }
     }
 }
