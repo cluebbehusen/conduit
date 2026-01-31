@@ -111,16 +111,6 @@ Modernize UI with Apple's Liquid Glass styling and add customization options.
   - Buttons with glass effect
   - Matches terminal aesthetic
 
-## Files to Create/Modify
-
-- `Views/TerminalContainerView.swift`
-- `Views/HostListView.swift`
-- `Views/HostRow.swift` (extract from HostListView)
-- `Views/SettingsView.swift` (new)
-- `Models/Theme.swift` (new)
-- `Services/ThemeService.swift` (new)
-- `Assets.xcassets`
-
 ## Technical Notes
 
 iOS 26 Liquid Glass APIs:

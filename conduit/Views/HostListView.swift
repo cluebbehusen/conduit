@@ -7,10 +7,12 @@ import SwiftUI
 
 struct HostListView: View {
     @Environment(HostStore.self) private var hostStore
+    @Environment(SecuritySettings.self) private var securitySettings
 
     @State private var selectedHost: Host?
     @State private var showAddHost = false
     @State private var hostToEdit: Host?
+    @State private var showSettings = false
 
     var body: some View {
         NavigationSplitView {
@@ -48,6 +50,15 @@ struct HostListView: View {
                         Image(systemName: "plus")
                     }
                 }
+
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .help("Security Settings")
+                }
             }
             .overlay {
                 if hostStore.hosts.isEmpty {
@@ -80,6 +91,10 @@ struct HostListView: View {
         .sheet(item: $hostToEdit) { host in
             HostEditView(hostStore: hostStore, existingHost: host)
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environment(securitySettings)
+        }
     }
 }
 
@@ -91,9 +106,18 @@ struct HostRow: View {
             Text(host.name)
                 .font(.headline)
 
-            Text("\(host.username)@\(host.hostname):\(host.port)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Text("\(host.username)@\(host.hostname):\(host.port)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if host.hasStoredCredential {
+                    Image(systemName: "lock.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                        .accessibilityLabel("Password saved in Keychain")
+                }
+            }
         }
         .padding(.vertical, 4)
     }
@@ -102,4 +126,5 @@ struct HostRow: View {
 #Preview {
     HostListView()
         .environment(HostStore())
+        .environment(SecuritySettings())
 }
