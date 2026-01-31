@@ -46,6 +46,7 @@ final class SSHService {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func performConnection(host: Host, password: String) async {
         do {
             let sshClient = try await SSHClient.connect(

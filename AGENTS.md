@@ -26,6 +26,8 @@ make check        # Both format-check + lint
 make build        # Build via xcodebuild
 ```
 
+> Codex-only note (for agent runs): execute `make format` / `make lint` outside the sandbox (with elevation) so cache writes succeed.
+
 ## After Making Changes
 
 Always run formatting and linting:

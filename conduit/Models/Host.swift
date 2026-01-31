@@ -13,6 +13,10 @@ struct Host: Identifiable, Codable, Hashable {
     var username: String
     var authMethod: AuthMethod = .password
 
+    var hasStoredCredential: Bool {
+        KeychainService.shared.hasPassword(for: id)
+    }
+
     enum AuthMethod: String, Codable, CaseIterable {
         case password
         case key

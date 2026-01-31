@@ -7,7 +7,7 @@ Features ordered by priority. Each file contains detailed tasks and acceptance c
 | #   | Feature                                                    | Effort    | Impact | Status |
 | --- | ---------------------------------------------------------- | --------- | ------ | ------ |
 | 01  | [Graceful Exit Handling](01-graceful-exit-handling.md)     | Small     | High   | ✅     |
-| 02  | [Keychain Storage + Face ID](02-keychain-storage.md)       | Medium    | High   | 🔲     |
+| 02  | [Keychain Storage + Face ID](02-keychain-storage.md)       | Medium    | High   | ✅     |
 | 03  | [Keyboard Accessory Styling](03-keyboard-accessory-bar.md) | Small-Med | Medium | 🔲     |
 | 04  | [SSH Key Authentication](04-ssh-key-authentication.md)     | Med-Large | High   | 🔲     |
 | 05  | [Known Hosts Verification](05-known-hosts-verification.md) | Small-Med | Medium | 🔲     |

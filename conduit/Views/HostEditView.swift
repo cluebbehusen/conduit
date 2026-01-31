@@ -15,6 +15,11 @@ struct HostEditView: View {
     @State private var hostname: String = ""
     @State private var port: String = "22"
     @State private var username: String = ""
+    @State private var password: String = ""
+    @State private var savePassword: Bool = false
+    @State private var showPasswordField: Bool = false
+    @State private var showKeychainError = false
+    @State private var keychainErrorMessage = ""
 
     init(hostStore: HostStore, existingHost: Host? = nil) {
         self.hostStore = hostStore
@@ -25,11 +30,18 @@ struct HostEditView: View {
             _hostname = State(initialValue: host.hostname)
             _port = State(initialValue: String(host.port))
             _username = State(initialValue: host.username)
+            _savePassword = State(initialValue: host.hasStoredCredential)
         }
     }
 
     private var isValid: Bool {
-        !name.isEmpty && !hostname.isEmpty && !username.isEmpty && Int(port) != nil
+        let passwordRequired = savePassword && (!hasStoredCredential || showPasswordField)
+        let passwordOK = !passwordRequired || !password.isEmpty
+        return !name.isEmpty && !hostname.isEmpty && !username.isEmpty && Int(port) != nil && passwordOK
+    }
+
+    private var hasStoredCredential: Bool {
+        existingHost?.hasStoredCredential ?? false
     }
 
     var body: some View {
@@ -55,6 +67,42 @@ struct HostEditView: View {
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+
+                    Toggle("Save password in Keychain", isOn: $savePassword)
+                        .toggleStyle(.switch)
+
+                    if !savePassword {
+                        Text("The password is stored securely and protected by biometrics.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if savePassword {
+                        if hasStoredCredential, !showPasswordField {
+                            HStack {
+                                Text("Password")
+                                Spacer()
+                                Text("Saved")
+                                    .foregroundStyle(.secondary)
+                                Button("Update") {
+                                    showPasswordField = true
+                                }
+                            }
+                        }
+
+                        if !hasStoredCredential || showPasswordField {
+                            SecureField("Password", text: $password)
+                                .textContentType(.none)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            if hasStoredCredential, showPasswordField {
+                                Button("Cancel update") {
+                                    password = ""
+                                    showPasswordField = false
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle(existingHost == nil ? "Add Host" : "Edit Host")
@@ -73,6 +121,21 @@ struct HostEditView: View {
                     .disabled(!isValid)
                 }
             }
+            .onChange(of: savePassword) { _, newValue in
+                if newValue {
+                    if !hasStoredCredential {
+                        showPasswordField = true
+                    }
+                } else {
+                    password = ""
+                    showPasswordField = false
+                }
+            }
+            .alert("Keychain Error", isPresented: $showKeychainError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(keychainErrorMessage)
+            }
         }
     }
 
@@ -86,13 +149,30 @@ struct HostEditView: View {
             authMethod: .password
         )
 
-        if existingHost != nil {
-            hostStore.update(host)
-        } else {
-            hostStore.add(host)
-        }
+        do {
+            if savePassword {
+                if !password.isEmpty {
+                    try KeychainService.shared.savePassword(password, for: host.id)
+                } else if !hasStoredCredential || showPasswordField {
+                    keychainErrorMessage = "Enter a password to save to Keychain."
+                    showKeychainError = true
+                    return
+                }
+            } else {
+                try KeychainService.shared.deletePassword(for: host.id)
+            }
 
-        dismiss()
+            if existingHost != nil {
+                hostStore.update(host)
+            } else {
+                hostStore.add(host)
+            }
+
+            dismiss()
+        } catch {
+            keychainErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            showKeychainError = true
+        }
     }
 }
 
