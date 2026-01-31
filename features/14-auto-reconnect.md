@@ -68,6 +68,7 @@ Automatically detect disconnection and attempt reconnection.
 ## Technical Notes
 
 Use NWPathMonitor for network reachability:
+
 ```swift
 let monitor = NWPathMonitor()
 monitor.pathUpdateHandler = { path in

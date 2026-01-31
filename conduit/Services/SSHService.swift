@@ -12,14 +12,19 @@ import NIOSSH
 @MainActor
 @Observable
 final class SSHService {
-    enum ConnectionState: Equatable {
-        case disconnected
-        case connecting
-        case connected
-        case error(String)
+    enum DisconnectReason: Equatable {
+        case userInitiated // User clicked Disconnect
+        case sessionEnded // Clean exit (user typed `exit`, remote closed normally)
+        case error(String) // Actual error (auth failure, network drop, timeout)
     }
 
-    private(set) var state: ConnectionState = .disconnected
+    enum ConnectionState: Equatable {
+        case disconnected(DisconnectReason?) // nil = initial state
+        case connecting
+        case connected
+    }
+
+    private(set) var state: ConnectionState = .disconnected(nil)
 
     var onOutput: (@Sendable (Data) -> Void)?
     var onDisconnect: (@Sendable () -> Void)?
@@ -85,26 +90,41 @@ final class SSHService {
                         }
                     }
                 } catch {
-                    await MainActor.run {
-                        self.state = .error("Stream error: \(error.localizedDescription)")
+                    // ChannelError indicates the channel closed - typically a clean exit
+                    let reason: DisconnectReason = if error is ChannelError {
+                        .sessionEnded
+                    } else {
+                        .error("Stream error: \(error.localizedDescription)")
                     }
+                    await MainActor.run {
+                        self.handleDisconnection(reason: reason)
+                    }
+                    return
                 }
 
                 await MainActor.run {
-                    self.handleDisconnection()
+                    self.handleDisconnection(reason: .sessionEnded)
                 }
             }
         } catch {
+            // ChannelError from withPTY indicates the session ended cleanly
+            let reason: DisconnectReason = if error is ChannelError {
+                .sessionEnded
+            } else {
+                .error(error.localizedDescription)
+            }
             await MainActor.run {
-                self.state = .error(error.localizedDescription)
-                self.client = nil
-                self.stdinWriter = nil
+                self.handleDisconnection(reason: reason)
             }
         }
     }
 
-    private func handleDisconnection() {
-        state = .disconnected
+    private func handleDisconnection(reason: DisconnectReason) {
+        // Don't overwrite userInitiated with sessionEnded from the closing channel
+        if case .disconnected(.userInitiated) = state {
+            return
+        }
+        state = .disconnected(reason)
         client = nil
         stdinWriter = nil
         onDisconnect?()
@@ -120,7 +140,7 @@ final class SSHService {
                 try await writer.write(buffer)
             } catch {
                 await MainActor.run {
-                    self.state = .error("Send error: \(error.localizedDescription)")
+                    self.state = .disconnected(.error("Send error: \(error.localizedDescription)"))
                 }
             }
         }
@@ -145,11 +165,15 @@ final class SSHService {
         connectionTask?.cancel()
         connectionTask = nil
 
+        // Set state synchronously so it's not overwritten by stream handlers
+        state = .disconnected(.userInitiated)
+        let clientToClose = client
+        client = nil
+        stdinWriter = nil
+        onDisconnect?()
+
         Task {
-            try? await client?.close()
-            await MainActor.run {
-                self.handleDisconnection()
-            }
+            try? await clientToClose?.close()
         }
     }
 }

@@ -7,6 +7,7 @@
 ## Problem
 
 Currently only password authentication is supported. Many servers:
+
 - Disable password auth entirely
 - Require key-based authentication
 - Use keys for automation/security
@@ -83,11 +84,13 @@ Support SSH key pairs with secure storage and optional passphrase protection.
 ## Technical Notes
 
 Citadel supports key auth via:
+
 ```swift
 .init(username: "user", privateKey: .init(sshEd25519: keyData))
 ```
 
 Key types to support:
+
 - Ed25519 (modern, recommended)
 - RSA (legacy, widely supported)
 - ECDSA (less common)

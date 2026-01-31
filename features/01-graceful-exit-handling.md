@@ -7,6 +7,7 @@
 ## Problem
 
 When user types `exit` or the remote shell closes cleanly, the app shows:
+
 - "Connection Error"
 - "The operation couldn't be completed. (NIOCore.ChannelError error 6.)"
 
