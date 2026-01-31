@@ -1,0 +1,15 @@
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+
+# OS
+.DS_Store
+
+# Dependencies resolved (optional - can include if you want lockfile)
+# *.resolved
