@@ -10,7 +10,10 @@ final class SecuritySettings {
 
     /// Time in seconds before requiring another biometric unlock.
     var autoLockTimeout: TimeInterval {
-        didSet { save() }
+        didSet {
+            save()
+            KeychainService.shared.invalidateCachedContext()
+        }
     }
 
     private var lastUnlockDate: Date? {

@@ -87,6 +87,7 @@ final class KeychainService {
             if updateStatus != errSecSuccess {
                 throw KeychainError.unexpectedStatus(updateStatus)
             }
+            clearCachedPassword(for: hostID)
             return
         }
 
