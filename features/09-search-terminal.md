@@ -7,6 +7,7 @@
 ## Problem
 
 Can't search through terminal output. Users need to:
+
 - Find previous command output
 - Search for errors in logs
 - Locate specific text in long output
@@ -59,6 +60,7 @@ Add search functionality for terminal scrollback buffer.
 ## Technical Notes
 
 SwiftTerm's Terminal class has search capabilities:
+
 - `search(for:)` method
 - Access via `terminalView.getTerminal()`
 

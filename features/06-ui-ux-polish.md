@@ -7,6 +7,7 @@
 ## Problem
 
 Current UI is functional but basic:
+
 - Default SwiftUI styling
 - No theming options
 - Limited terminal customization
@@ -123,6 +124,7 @@ Modernize UI with Apple's Liquid Glass styling and add customization options.
 ## Technical Notes
 
 iOS 26 Liquid Glass APIs:
+
 ```swift
 // Basic glass effect
 .glassEffect()

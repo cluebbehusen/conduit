@@ -18,8 +18,14 @@ struct TerminalContainerView: View {
             Color.black.ignoresSafeArea()
 
             switch sshService.state {
-            case .disconnected:
+            case .disconnected(nil), .disconnected(.userInitiated):
                 disconnectedView
+
+            case .disconnected(.sessionEnded):
+                sessionEndedView
+
+            case let .disconnected(.error(message)):
+                errorView(message: message)
 
             case .connecting:
                 connectingView
@@ -27,9 +33,6 @@ struct TerminalContainerView: View {
             case .connected:
                 SwiftTermView(sshService: sshService)
                     .ignoresSafeArea(.keyboard)
-
-            case let .error(message):
-                errorView(message: message)
             }
         }
         .navigationTitle(host.name)
@@ -69,6 +72,23 @@ struct TerminalContainerView: View {
                 .foregroundStyle(.secondary)
 
             Button("Connect") {
+                showPasswordPrompt = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private var sessionEndedView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+
+            Text("Session Ended")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            Button("Reconnect") {
                 showPasswordPrompt = true
             }
             .buttonStyle(.borderedProminent)

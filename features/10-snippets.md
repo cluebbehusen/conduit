@@ -7,6 +7,7 @@
 ## Problem
 
 Users repeatedly type the same commands:
+
 - Deploy scripts
 - Log file locations
 - Complex pipelines

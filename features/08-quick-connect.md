@@ -7,6 +7,7 @@
 ## Problem
 
 To connect to a new server, must:
+
 1. Tap "+"
 2. Fill out form (name, hostname, port, username)
 3. Save

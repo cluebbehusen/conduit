@@ -7,6 +7,7 @@
 ## Problem
 
 Currently using `.acceptAnything()` for host key validation:
+
 ```swift
 hostKeyValidator: .acceptAnything()
 ```
@@ -73,6 +74,7 @@ Implement known_hosts style verification with trust-on-first-use (TOFU) and chan
 ## Technical Notes
 
 Citadel's `hostKeyValidator` parameter accepts custom validators:
+
 ```swift
 hostKeyValidator: .custom { hostKey in
     // Verify against known hosts

@@ -7,6 +7,7 @@
 ## Problem
 
 No way to:
+
 - Save terminal output for later review
 - Share session transcript
 - Audit what commands were run

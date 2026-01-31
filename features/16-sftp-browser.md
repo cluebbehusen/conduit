@@ -7,6 +7,7 @@
 ## Problem
 
 Can't browse or transfer files over SSH connection. Users need to:
+
 - Browse remote file system
 - Download files to iPad
 - Upload files from iPad
@@ -96,6 +97,7 @@ Implement SFTP client with file browser UI.
 ## Technical Notes
 
 Citadel SFTP example:
+
 ```swift
 let sftp = try await client.openSFTP()
 let files = try await sftp.listDirectory(atPath: "/home/user")

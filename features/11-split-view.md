@@ -7,6 +7,7 @@
 ## Problem
 
 Can only see one terminal at a time. Users want to:
+
 - Compare output from two servers
 - Monitor logs while running commands
 - Reference one session while working in another

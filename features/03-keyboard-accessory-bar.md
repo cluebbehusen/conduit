@@ -7,6 +7,7 @@
 ## Problem
 
 SwiftTerm's built-in accessory bar works but looks dated:
+
 - Light gray background clashes with dark terminal
 - Button styling doesn't match app theme
 - No customization options

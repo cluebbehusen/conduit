@@ -7,6 +7,7 @@
 ## Problem
 
 Users need to:
+
 - Access remote services through SSH tunnel
 - Forward local ports to remote servers
 - Create reverse tunnels
@@ -66,6 +67,7 @@ Implement local and remote port forwarding.
 ## Technical Notes
 
 Citadel supports port forwarding:
+
 ```swift
 try await client.createDirectTCPIPChannel(
     to: remoteHost,
