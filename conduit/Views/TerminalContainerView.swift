@@ -10,7 +10,7 @@ struct TerminalContainerView: View {
     @Binding var showAddHost: Bool
 
     @Environment(HostStore.self) private var hostStore
-    @Environment(SecuritySettings.self) private var securitySettings
+    @Environment(Settings.self) private var settings
 
     @State private var sshService = SSHService()
     @State private var showPasswordPrompt = false
@@ -51,7 +51,7 @@ struct TerminalContainerView: View {
                     .overlay(alignment: .bottomTrailing) {
                         TerminalAccessoryFAB(
                             sshService: sshService,
-                            mode: securitySettings.accessoryBarMode,
+                            mode: settings.accessoryBarMode,
                             ctrlActive: $ctrlActive,
                             onKeyTap: {}
                         )
@@ -320,11 +320,11 @@ struct TerminalContainerView: View {
             let retrievedPassword = try await KeychainService.shared.retrievePassword(
                 for: host.id,
                 prompt: prompt,
-                reuseInterval: securitySettings.autoLockTimeout
+                reuseInterval: settings.autoLockTimeout
             )
 
             await MainActor.run {
-                securitySettings.recordUnlock()
+                settings.recordUnlock()
                 sshService.connect(host: host, password: retrievedPassword)
             }
         } catch let error as KeychainService.KeychainError {
@@ -383,5 +383,5 @@ private struct StatusIcon: View {
         TerminalContainerView(host: .example, showAddHost: .constant(false))
     }
     .environment(HostStore())
-    .environment(SecuritySettings())
+    .environment(Settings())
 }

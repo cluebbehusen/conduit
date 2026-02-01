@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(SecuritySettings.self) private var securitySettings
+    @Environment(Settings.self) private var settings
 
     @State private var showClearAlert = false
     @State private var showClearKnownHostsAlert = false
@@ -17,11 +17,20 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        @Bindable var settings = securitySettings
+        @Bindable var bindableSettings = settings
         NavigationStack {
             Form {
+                Section("Appearance") {
+                    Picker("Theme", selection: $bindableSettings.appTheme) {
+                        ForEach(AppTheme.allCases, id: \.self) { theme in
+                            Text(theme.displayName).tag(theme)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
                 Section("Terminal") {
-                    Picker("Quick keys", selection: $settings.accessoryBarMode) {
+                    Picker("Quick keys", selection: $bindableSettings.accessoryBarMode) {
                         ForEach(AccessoryBarMode.allCases, id: \.self) { mode in
                             Text(mode.displayName).tag(mode)
                         }
@@ -33,7 +42,7 @@ struct SettingsView: View {
                 }
 
                 Section("Security") {
-                    Picker("Auto-lock timeout", selection: $settings.autoLockTimeout) {
+                    Picker("Auto-lock timeout", selection: $bindableSettings.autoLockTimeout) {
                         ForEach(timeoutOptions, id: \.value) { option in
                             Text(option.label).tag(option.value)
                         }
@@ -105,5 +114,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
-        .environment(SecuritySettings())
+        .environment(Settings())
 }
