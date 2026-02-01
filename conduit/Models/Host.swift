@@ -32,6 +32,12 @@ extension Host {
         username: "user"
     )
 
+    private static let lastConnectedFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
     /// Formatted string for last connected time
     var lastConnectedFormatted: String? {
         guard let lastConnected else { return nil }
@@ -43,8 +49,6 @@ extension Host {
             return "just now"
         }
 
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: lastConnected, relativeTo: Date())
+        return Self.lastConnectedFormatter.localizedString(for: lastConnected, relativeTo: Date())
     }
 }
