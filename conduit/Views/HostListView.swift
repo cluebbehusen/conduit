@@ -14,6 +14,8 @@ struct HostListView: View {
     @State private var hostToEdit: Host?
     @State private var showSettings = false
     @State private var searchText = ""
+    @State private var showSwitchConfirmation = false
+    @State private var pendingHostID: Host.ID?
 
     private var filteredHosts: [Host] {
         let sorted = hostStore.sortedHosts
@@ -27,9 +29,29 @@ struct HostListView: View {
         }
     }
 
+    private var selectionBinding: Binding<Host.ID?> {
+        Binding(
+            get: { selectedHostID },
+            set: { newValue in
+                // Allow deselection or selecting the same host
+                guard let newValue,
+                      let connectedId = hostStore.connectedHostId,
+                      connectedId != newValue
+                else {
+                    selectedHostID = newValue
+                    return
+                }
+
+                // Connected to a different host - ask for confirmation
+                pendingHostID = newValue
+                showSwitchConfirmation = true
+            }
+        )
+    }
+
     var body: some View {
         NavigationSplitView {
-            List(filteredHosts, id: \.id, selection: $selectedHostID) { host in
+            List(filteredHosts, id: \.id, selection: selectionBinding) { host in
                 NavigationLink(value: host) {
                     HostRow(host: host)
                 }
@@ -100,6 +122,7 @@ struct HostListView: View {
                let host = hostStore.hosts.first(where: { $0.id == hostID })
             {
                 TerminalContainerView(host: host, showAddHost: $showAddHost)
+                    .id(hostID)
             } else {
                 NoHostSelectedView(showAddHost: $showAddHost)
             }
@@ -116,6 +139,27 @@ struct HostListView: View {
             SettingsView()
                 .environment(settings)
                 .preferredColorScheme(settings.appTheme.colorScheme)
+        }
+        .confirmationDialog(
+            "Switch Host?",
+            isPresented: $showSwitchConfirmation,
+            presenting: pendingHostID
+        ) { hostID in
+            if let host = hostStore.hosts.first(where: { $0.id == hostID }) {
+                Button("Switch to \(host.name)") {
+                    selectedHostID = hostID
+                    pendingHostID = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingHostID = nil
+            }
+        } message: { _ in
+            if let currentId = hostStore.connectedHostId,
+               let currentHost = hostStore.hosts.first(where: { $0.id == currentId })
+            {
+                Text("This will disconnect from \(currentHost.name).")
+            }
         }
     }
 }
