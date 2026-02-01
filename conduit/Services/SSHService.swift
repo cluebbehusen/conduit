@@ -65,6 +65,11 @@ final class SSHService {
     private var pendingPort: Int?
 
     func connect(host: Host, password: String) {
+        let authMethod = SSHAuthenticationMethod.passwordBased(username: host.username, password: password)
+        connect(host: host, authMethod: authMethod)
+    }
+
+    func connect(host: Host, authMethod: SSHAuthenticationMethod) {
         guard state != .connecting, state != .verifyingHostKey else { return }
 
         state = .connecting
@@ -73,7 +78,7 @@ final class SSHService {
         pendingPort = host.port
 
         connectionTask = Task { [weak self] in
-            await self?.performConnection(host: host, password: password)
+            await self?.performConnection(host: host, authMethod: authMethod)
         }
     }
 
@@ -104,7 +109,7 @@ final class SSHService {
         hostKeyValidationPromise = nil
     }
 
-    private func performConnection(host: Host, password: String) async {
+    private func performConnection(host: Host, authMethod: SSHAuthenticationMethod) async {
         let hostname = host.hostname
         let port = host.port
 
@@ -142,7 +147,7 @@ final class SSHService {
             let sshClient = try await SSHClient.connect(
                 host: host.hostname,
                 port: host.port,
-                authenticationMethod: .passwordBased(username: host.username, password: password),
+                authenticationMethod: authMethod,
                 hostKeyValidator: .custom(validator),
                 reconnect: .never
             )

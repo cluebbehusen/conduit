@@ -3,9 +3,11 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(Settings.self) private var settings
+    @Environment(SSHKeyStore.self) private var keyStore
 
     @State private var showClearAlert = false
     @State private var showClearKnownHostsAlert = false
+    @State private var showKeyList = false
     @State private var clearError: String?
 
     private let timeoutOptions: [(label: String, value: TimeInterval)] = [
@@ -53,6 +55,22 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Section("SSH Keys") {
+                    Button {
+                        showKeyList = true
+                    } label: {
+                        HStack {
+                            Label("Manage SSH Keys", systemImage: "key")
+                            Spacer()
+                            Text("\(keyStore.keys.count)")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+
                 Section("Credentials") {
                     Button(role: .destructive) {
                         showClearAlert = true
@@ -62,7 +80,7 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         showClearKnownHostsAlert = true
                     } label: {
-                        Label("Clear known hosts", systemImage: "key")
+                        Label("Clear known hosts", systemImage: "xmark.shield")
                     }
                     if let clearError {
                         Text(clearError)
@@ -108,6 +126,11 @@ struct SettingsView: View {
                     """
                 )
             }
+            .sheet(isPresented: $showKeyList) {
+                KeyListView()
+                    .environment(keyStore)
+                    .environment(settings)
+            }
         }
     }
 }
@@ -115,4 +138,5 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environment(Settings())
+        .environment(SSHKeyStore())
 }

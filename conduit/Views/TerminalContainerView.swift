@@ -11,11 +11,14 @@ struct TerminalContainerView: View {
     @Binding var showAddHost: Bool
 
     @Environment(HostStore.self) private var hostStore
+    @Environment(SSHKeyStore.self) private var keyStore
     @Environment(Settings.self) private var settings
 
     @State private var sshService = SSHService()
     @State private var showPasswordPrompt = false
     @State private var password = ""
+    @State private var showKeyPassphrasePrompt = false
+    @State private var keyPassphrase = ""
     @State private var attemptedAutoConnect = false
     @State private var keychainErrorMessage: String?
     @State private var showKeychainError = false
@@ -87,11 +90,27 @@ struct TerminalContainerView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Connect") {
-                connect()
+                connectWithPassword()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Enter password for \(host.username)@\(host.hostname)")
+        }
+        .alert("Enter Key Passphrase", isPresented: $showKeyPassphrasePrompt) {
+            SecureField("Passphrase", text: $keyPassphrase)
+                .textContentType(.none)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Connect") {
+                Task {
+                    await connectWithKeyPassphrase()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                keyPassphrase = ""
+            }
+        } message: {
+            Text("Enter passphrase for your SSH key")
         }
         .alert("Security Error", isPresented: $showKeychainError) {
             Button("OK", role: .cancel) {}
@@ -289,7 +308,7 @@ struct TerminalContainerView: View {
         }
     }
 
-    private func connect() {
+    private func connectWithPassword() {
         guard !password.isEmpty else { return }
         sshService.connect(host: host, password: password)
         password = ""
@@ -301,20 +320,31 @@ struct TerminalContainerView: View {
         guard !attemptedAutoConnect else { return }
         attemptedAutoConnect = true
         guard host.hasStoredCredential else { return }
-        await connectWithStoredCredential()
-    }
 
-    private func connectTapped() async {
-        if host.hasStoredCredential {
-            await connectWithStoredCredential()
-        } else {
-            await MainActor.run {
-                showPasswordPrompt = true
-            }
+        switch host.authMethod {
+        case .password:
+            await connectWithStoredPassword()
+        case .key:
+            await connectWithKey()
         }
     }
 
-    private func connectWithStoredCredential() async {
+    private func connectTapped() async {
+        switch host.authMethod {
+        case .password:
+            if host.hasStoredCredential {
+                await connectWithStoredPassword()
+            } else {
+                await MainActor.run {
+                    showPasswordPrompt = true
+                }
+            }
+        case .key:
+            await connectWithKey()
+        }
+    }
+
+    private func connectWithStoredPassword() async {
         let prompt = "Authenticate to connect to \(host.name)"
 
         do {
@@ -338,14 +368,104 @@ struct TerminalContainerView: View {
         }
     }
 
+    private func connectWithKey() async {
+        guard let keyID = host.keyID,
+              let sshKey = keyStore.key(for: keyID)
+        else {
+            await MainActor.run {
+                keychainErrorMessage = "No SSH key configured for this host."
+                showKeychainError = true
+            }
+            return
+        }
+
+        let prompt = "Authenticate to use SSH key \"\(sshKey.name)\""
+
+        do {
+            let keyContent = try await SSHKeyService.shared.retrievePrivateKey(
+                for: keyID,
+                prompt: prompt,
+                reuseInterval: settings.autoLockTimeout
+            )
+
+            // Check if key requires passphrase
+            if sshKey.requiresPassphrase {
+                await MainActor.run {
+                    showKeyPassphrasePrompt = true
+                }
+                return
+            }
+
+            // Build auth method and connect
+            let authMethod = try SSHKeyService.shared.buildAuthMethod(
+                keyContent: keyContent,
+                keyType: sshKey.keyType,
+                passphrase: nil,
+                username: host.username
+            )
+
+            await MainActor.run {
+                settings.recordUnlock()
+                sshService.connect(host: host, authMethod: authMethod)
+            }
+        } catch let error as KeychainService.KeychainError {
+            handleKeychainError(error)
+        } catch {
+            await MainActor.run {
+                keychainErrorMessage = error.localizedDescription
+                showKeychainError = true
+            }
+        }
+    }
+
+    private func connectWithKeyPassphrase() async {
+        guard let keyID = host.keyID,
+              let sshKey = keyStore.key(for: keyID)
+        else {
+            return
+        }
+
+        do {
+            let keyContent = try await SSHKeyService.shared.retrievePrivateKey(
+                for: keyID,
+                prompt: "Authenticate to use SSH key",
+                reuseInterval: settings.autoLockTimeout
+            )
+
+            let authMethod = try SSHKeyService.shared.buildAuthMethod(
+                keyContent: keyContent,
+                keyType: sshKey.keyType,
+                passphrase: keyPassphrase,
+                username: host.username
+            )
+
+            await MainActor.run {
+                keyPassphrase = ""
+                showKeyPassphrasePrompt = false
+                settings.recordUnlock()
+                sshService.connect(host: host, authMethod: authMethod)
+            }
+        } catch {
+            await MainActor.run {
+                keyPassphrase = ""
+                keychainErrorMessage = "Failed to decrypt key: \(error.localizedDescription)"
+                showKeychainError = true
+            }
+        }
+    }
+
     private func handleKeychainError(_ error: KeychainService.KeychainError) {
         switch error {
         case .noStoredPassword, .userCanceled:
-            showPasswordPrompt = true
+            if host.authMethod == .password {
+                showPasswordPrompt = true
+            }
         case let .biometryNotAvailable(message):
             keychainErrorMessage = message
             showKeychainError = true
-            showPasswordPrompt = true
+            if host.authMethod == .password {
+                showPasswordPrompt = true
+            }
         default:
             keychainErrorMessage = error.errorDescription ?? error.localizedDescription
             showKeychainError = true
@@ -353,29 +473,19 @@ struct TerminalContainerView: View {
     }
 }
 
-// MARK: - Status Card
-
 private struct StatusCard<Content: View>: View {
     @ViewBuilder let content: Content
-
     var body: some View {
-        content
-            .padding(28)
-            .frame(maxWidth: 300)
+        content.padding(28).frame(maxWidth: 300)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
-// MARK: - Status Icon
-
 private struct StatusIcon: View {
     let systemName: String
     let color: Color
-
     var body: some View {
-        Image(systemName: systemName)
-            .font(.system(size: 44))
-            .foregroundStyle(color)
+        Image(systemName: systemName).font(.system(size: 44)).foregroundStyle(color)
     }
 }
 
@@ -384,5 +494,6 @@ private struct StatusIcon: View {
         TerminalContainerView(host: .example, showAddHost: .constant(false))
     }
     .environment(HostStore())
+    .environment(SSHKeyStore())
     .environment(Settings())
 }

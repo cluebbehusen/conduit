@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 enum AccessoryBarMode: String, CaseIterable {
     case hidden
@@ -30,9 +31,15 @@ enum AppTheme: String, CaseIterable {
 
     var colorScheme: ColorScheme? {
         switch self {
-        case .system: nil
-        case .light: .light
-        case .dark: .dark
+        case .system:
+            // Read system interface style from window scene (unaffected by app overrides)
+            let style = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+                .screen.traitCollection.userInterfaceStyle ?? .light
+            return style == .dark ? .dark : .light
+        case .light:
+            return .light
+        case .dark:
+            return .dark
         }
     }
 }
