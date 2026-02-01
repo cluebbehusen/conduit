@@ -5,9 +5,25 @@
 
 import Citadel
 import Foundation
-import NIOCore
+import NIO
 import NIOFoundationCompat
 import NIOSSH
+
+/// Error thrown when user rejects a host key
+struct HostKeyRejected: Error {}
+
+/// Custom host key validator that bridges Citadel's delegate API with our async UI flow
+final class InteractiveHostKeyValidator: NIOSSHClientServerAuthenticationDelegate, @unchecked Sendable {
+    private let validationHandler: @Sendable (NIOSSHPublicKey, EventLoopPromise<Void>) -> Void
+
+    init(validationHandler: @escaping @Sendable (NIOSSHPublicKey, EventLoopPromise<Void>) -> Void) {
+        self.validationHandler = validationHandler
+    }
+
+    func validateHostKey(hostKey: NIOSSHPublicKey, validationCompletePromise: EventLoopPromise<Void>) {
+        validationHandler(hostKey, validationCompletePromise)
+    }
+}
 
 @MainActor
 @Observable
@@ -41,8 +57,8 @@ final class SSHService {
     private var currentCols: Int = 80
     private var currentRows: Int = 24
 
-    /// Continuation for host key verification - resumed when user makes a decision
-    private var hostKeyVerificationContinuation: CheckedContinuation<Bool, Never>?
+    /// Promise for host key verification - completed when user makes a decision
+    private var hostKeyValidationPromise: EventLoopPromise<Void>?
 
     /// Host info needed for verification callback
     private var pendingHostname: String?
@@ -73,34 +89,33 @@ final class SSHService {
             fingerprint: pending.fingerprint
         )
 
-        // Resume connection
+        // Resume connection by succeeding the promise
         pendingHostKey = nil
-        hostKeyVerificationContinuation?.resume(returning: true)
-        hostKeyVerificationContinuation = nil
+        hostKeyValidationPromise?.succeed(())
+        hostKeyValidationPromise = nil
     }
 
     /// Called by UI when user rejects the host key
     func rejectHostKey() {
         pendingHostKey = nil
-        hostKeyVerificationContinuation?.resume(returning: false)
-        hostKeyVerificationContinuation = nil
+        hostKeyValidationPromise?.fail(HostKeyRejected())
+        hostKeyValidationPromise = nil
     }
 
-    // swiftlint:disable:next function_body_length
     private func performConnection(host: Host, password: String) async {
-        // Create a validation handler that uses KnownHostsService
         let hostname = host.hostname
         let port = host.port
 
-        // We need to capture self weakly for the closure
-        let validator = NIOSSHClientConfiguration.HostKeyValidator.custom { [weak self] hostKey in
-            guard let self else { return false }
+        // Create validator that bridges to our async UI flow
+        let validator = InteractiveHostKeyValidator { [weak self] hostKey, promise in
+            guard let self else {
+                promise.fail(HostKeyRejected())
+                return
+            }
 
-            // Extract key type and calculate fingerprint
             let keyType = self.extractKeyType(from: hostKey)
             let fingerprint = self.calculateFingerprint(from: hostKey)
 
-            // Check against known hosts
             let pendingVerification = KnownHostsService.shared.verifyHostKey(
                 hostname: hostname,
                 port: port,
@@ -109,18 +124,16 @@ final class SSHService {
             )
 
             if let pending = pendingVerification {
-                // Need user verification - use continuation to pause
-                return await withCheckedContinuation { continuation in
-                    Task { @MainActor in
-                        self.pendingHostKey = pending
-                        self.state = .verifyingHostKey
-                        self.hostKeyVerificationContinuation = continuation
-                    }
+                // Need user verification - store promise to complete later
+                Task { @MainActor in
+                    self.pendingHostKey = pending
+                    self.state = .verifyingHostKey
+                    self.hostKeyValidationPromise = promise
                 }
+            } else {
+                // Key is known and matches - allow connection
+                promise.succeed(())
             }
-
-            // Key is known and matches - allow connection
-            return true
         }
 
         do {
@@ -128,78 +141,76 @@ final class SSHService {
                 host: host.hostname,
                 port: host.port,
                 authenticationMethod: .passwordBased(username: host.username, password: password),
-                hostKeyValidator: validator,
+                hostKeyValidator: .custom(validator),
                 reconnect: .never
             )
 
             self.client = sshClient
-
-            let ptyRequest = SSHChannelRequestEvent.PseudoTerminalRequest(
-                wantReply: true,
-                term: "xterm-256color",
-                terminalCharacterWidth: currentCols,
-                terminalRowHeight: currentRows,
-                terminalPixelWidth: 0,
-                terminalPixelHeight: 0,
-                terminalModes: .init([:])
-            )
-
-            try await sshClient.withPTY(ptyRequest) { inbound, writer in
-                await MainActor.run {
-                    self.stdinWriter = writer
-                    self.state = .connected
-                }
-
-                do {
-                    for try await event in inbound {
-                        switch event {
-                        case let .stdout(buffer):
-                            let data = Data(buffer: buffer)
-                            if let onOutput = await MainActor.run(body: { self.onOutput }) {
-                                onOutput(data)
-                            }
-                        case let .stderr(buffer):
-                            let data = Data(buffer: buffer)
-                            if let onOutput = await MainActor.run(body: { self.onOutput }) {
-                                onOutput(data)
-                            }
-                        }
-                    }
-                } catch {
-                    // ChannelError indicates the channel closed - typically a clean exit
-                    let reason: DisconnectReason = if error is ChannelError {
-                        .sessionEnded
-                    } else {
-                        .error("Stream error: \(error.localizedDescription)")
-                    }
-                    await MainActor.run {
-                        self.handleDisconnection(reason: reason)
-                    }
-                    return
-                }
-
-                await MainActor.run {
-                    self.handleDisconnection(reason: .sessionEnded)
-                }
-            }
+            try await runPTYSession(sshClient: sshClient)
         } catch {
-            // Check if this was a host key rejection
-            if state == .verifyingHostKey || pendingHostKey != nil {
-                await MainActor.run {
-                    self.handleDisconnection(reason: .hostKeyRejected)
+            handleConnectionError(error)
+        }
+    }
+
+    private func runPTYSession(sshClient: SSHClient) async throws {
+        let ptyRequest = SSHChannelRequestEvent.PseudoTerminalRequest(
+            wantReply: true,
+            term: "xterm-256color",
+            terminalCharacterWidth: currentCols,
+            terminalRowHeight: currentRows,
+            terminalPixelWidth: 0,
+            terminalPixelHeight: 0,
+            terminalModes: .init([:])
+        )
+
+        try await sshClient.withPTY(ptyRequest) { inbound, writer in
+            await MainActor.run {
+                self.stdinWriter = writer
+                self.state = .connected
+            }
+
+            do {
+                for try await event in inbound {
+                    await handleSSHOutput(event)
                 }
+            } catch {
+                let reason: DisconnectReason = error is ChannelError
+                    ? .sessionEnded
+                    : .error("Stream error: \(error.localizedDescription)")
+                await MainActor.run { self.handleDisconnection(reason: reason) }
                 return
             }
 
-            // ChannelError from withPTY indicates the session ended cleanly
-            let reason: DisconnectReason = if error is ChannelError {
-                .sessionEnded
-            } else {
-                .error(error.localizedDescription)
+            await MainActor.run { self.handleDisconnection(reason: .sessionEnded) }
+        }
+    }
+
+    private func handleSSHOutput(_ event: ExecCommandOutput) async {
+        let data = switch event {
+        case let .stdout(buffer):
+            Data(buffer: buffer)
+        case let .stderr(buffer):
+            Data(buffer: buffer)
+        }
+        if let onOutput = await MainActor.run(body: { self.onOutput }) {
+            onOutput(data)
+        }
+    }
+
+    private func handleConnectionError(_ error: Error) {
+        // Check if this was a host key rejection
+        if state == .verifyingHostKey || pendingHostKey != nil || error is HostKeyRejected {
+            Task { @MainActor in
+                self.handleDisconnection(reason: .hostKeyRejected)
             }
-            await MainActor.run {
-                self.handleDisconnection(reason: reason)
-            }
+            return
+        }
+
+        let reason: DisconnectReason = error is ChannelError
+            ? .sessionEnded
+            : .error(error.localizedDescription)
+        Task { @MainActor in
+            self.handleDisconnection(reason: reason)
         }
     }
 
@@ -212,7 +223,7 @@ final class SSHService {
         client = nil
         stdinWriter = nil
         pendingHostKey = nil
-        hostKeyVerificationContinuation = nil
+        hostKeyValidationPromise = nil
         onDisconnect?()
     }
 
@@ -252,9 +263,9 @@ final class SSHService {
         connectionTask = nil
 
         // Cancel any pending host key verification
-        if hostKeyVerificationContinuation != nil {
-            hostKeyVerificationContinuation?.resume(returning: false)
-            hostKeyVerificationContinuation = nil
+        if hostKeyValidationPromise != nil {
+            hostKeyValidationPromise?.fail(HostKeyRejected())
+            hostKeyValidationPromise = nil
         }
         pendingHostKey = nil
 

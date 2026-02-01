@@ -6,7 +6,9 @@
 import Foundation
 
 struct KnownHost: Codable, Identifiable {
-    var id: String { hostKey }
+    var id: String {
+        hostKey
+    }
 
     /// Unique key for this host (hostname:port)
     let hostKey: String

@@ -5,6 +5,7 @@
 
 import SwiftUI
 
+// swiftlint:disable:next type_body_length
 struct TerminalContainerView: View {
     let host: Host
     @Binding var showAddHost: Bool
