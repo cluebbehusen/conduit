@@ -12,16 +12,29 @@ struct Host: Identifiable, Codable, Hashable {
     var port: Int = 22
     var username: String
     var authMethod: AuthMethod = .password
+    var keyID: UUID?
     var isFavorite: Bool = false
     var lastConnected: Date?
 
     var hasStoredCredential: Bool {
-        KeychainService.shared.hasPassword(for: id)
+        switch authMethod {
+        case .password:
+            KeychainService.shared.hasPassword(for: id)
+        case .key:
+            keyID != nil
+        }
     }
 
     enum AuthMethod: String, Codable, CaseIterable {
         case password
         case key
+
+        var displayName: String {
+            switch self {
+            case .password: "Password"
+            case .key: "SSH Key"
+            }
+        }
     }
 }
 

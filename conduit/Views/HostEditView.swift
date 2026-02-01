@@ -7,6 +7,8 @@ import SwiftUI
 
 struct HostEditView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(SSHKeyStore.self) private var keyStore
+    @Environment(Settings.self) private var settings
 
     let hostStore: HostStore
     let existingHost: Host?
@@ -15,11 +17,14 @@ struct HostEditView: View {
     @State private var hostname: String = ""
     @State private var port: String = "22"
     @State private var username: String = ""
+    @State private var authMethod: Host.AuthMethod = .password
+    @State private var selectedKeyID: UUID?
     @State private var password: String = ""
     @State private var savePassword: Bool = false
     @State private var showPasswordField: Bool = false
     @State private var showKeychainError = false
     @State private var keychainErrorMessage = ""
+    @State private var showKeyList = false
 
     init(hostStore: HostStore, existingHost: Host? = nil) {
         self.hostStore = hostStore
@@ -30,18 +35,28 @@ struct HostEditView: View {
             _hostname = State(initialValue: host.hostname)
             _port = State(initialValue: String(host.port))
             _username = State(initialValue: host.username)
-            _savePassword = State(initialValue: host.hasStoredCredential)
+            _authMethod = State(initialValue: host.authMethod)
+            _selectedKeyID = State(initialValue: host.keyID)
+            _savePassword = State(initialValue: host.authMethod == .password && host.hasStoredCredential)
         }
     }
 
     private var isValid: Bool {
-        let passwordRequired = savePassword && (!hasStoredCredential || showPasswordField)
-        let passwordOK = !passwordRequired || !password.isEmpty
-        return !name.isEmpty && !hostname.isEmpty && !username.isEmpty && Int(port) != nil && passwordOK
+        let baseValid = !name.isEmpty && !hostname.isEmpty && !username.isEmpty && Int(port) != nil
+
+        switch authMethod {
+        case .password:
+            let passwordRequired = savePassword && (!hasStoredPasswordCredential || showPasswordField)
+            let passwordOK = !passwordRequired || !password.isEmpty
+            return baseValid && passwordOK
+        case .key:
+            return baseValid && selectedKeyID != nil
+        }
     }
 
-    private var hasStoredCredential: Bool {
-        existingHost?.hasStoredCredential ?? false
+    private var hasStoredPasswordCredential: Bool {
+        guard let host = existingHost, host.authMethod == .password else { return false }
+        return KeychainService.shared.hasPassword(for: host.id)
     }
 
     var body: some View {
@@ -71,41 +86,18 @@ struct HostEditView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 
-                    Toggle("Save password in Keychain", isOn: $savePassword)
-                        .toggleStyle(.switch)
-
-                    if !savePassword {
-                        Text("The password is stored securely and protected by biometrics.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if savePassword {
-                        if hasStoredCredential, !showPasswordField {
-                            HStack {
-                                Text("Password")
-                                Spacer()
-                                Text("Saved")
-                                    .foregroundStyle(.secondary)
-                                Button("Update") {
-                                    showPasswordField = true
-                                }
-                            }
-                        }
-
-                        if !hasStoredCredential || showPasswordField {
-                            SecureField("Password", text: $password)
-                                .textContentType(.none)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                            if hasStoredCredential, showPasswordField {
-                                Button("Cancel update") {
-                                    password = ""
-                                    showPasswordField = false
-                                }
-                            }
+                    Picker("Method", selection: $authMethod) {
+                        ForEach(Host.AuthMethod.allCases, id: \.self) { method in
+                            Text(method.displayName).tag(method)
                         }
                     }
+                    .pickerStyle(.segmented)
+                }
+
+                if authMethod == .password {
+                    passwordSection
+                } else {
+                    keySection
                 }
             }
             .navigationTitle(existingHost == nil ? "Add Host" : "Edit Host")
@@ -128,9 +120,18 @@ struct HostEditView: View {
                     .disabled(!isValid)
                 }
             }
+            .onChange(of: authMethod) { _, newValue in
+                if newValue == .password {
+                    selectedKeyID = nil
+                } else {
+                    savePassword = false
+                    password = ""
+                    showPasswordField = false
+                }
+            }
             .onChange(of: savePassword) { _, newValue in
                 if newValue {
-                    if !hasStoredCredential {
+                    if !hasStoredPasswordCredential {
                         showPasswordField = true
                     }
                 } else {
@@ -143,6 +144,89 @@ struct HostEditView: View {
             } message: {
                 Text(keychainErrorMessage)
             }
+            .sheet(isPresented: $showKeyList) {
+                KeyListView()
+                    .environment(keyStore)
+                    .environment(settings)
+            }
+        }
+    }
+
+    private var passwordSection: some View {
+        Section {
+            Toggle("Save password in Keychain", isOn: $savePassword)
+                .toggleStyle(.switch)
+
+            if !savePassword {
+                Text("The password is stored securely and protected by biometrics.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if savePassword {
+                if hasStoredPasswordCredential, !showPasswordField {
+                    HStack {
+                        Text("Password")
+                        Spacer()
+                        Text("Saved")
+                            .foregroundStyle(.secondary)
+                        Button("Update") {
+                            showPasswordField = true
+                        }
+                    }
+                }
+
+                if !hasStoredPasswordCredential || showPasswordField {
+                    SecureField("Password", text: $password)
+                        .textContentType(.none)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if hasStoredPasswordCredential, showPasswordField {
+                        Button("Cancel update") {
+                            password = ""
+                            showPasswordField = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var keySection: some View {
+        Section {
+            if keyStore.keys.isEmpty {
+                HStack {
+                    Text("No SSH keys available")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Import") {
+                        showKeyList = true
+                    }
+                }
+            } else {
+                Picker("SSH Key", selection: $selectedKeyID) {
+                    Text("Select a key").tag(nil as UUID?)
+                    ForEach(keyStore.sortedKeys) { key in
+                        HStack {
+                            Text(key.name)
+                            Spacer()
+                            Text(key.keyType.displayName)
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(key.id as UUID?)
+                    }
+                }
+
+                Button {
+                    showKeyList = true
+                } label: {
+                    Label("Manage Keys", systemImage: "key")
+                }
+            }
+        } footer: {
+            if let keyID = selectedKeyID, let key = keyStore.key(for: keyID) {
+                Text("Fingerprint: \(key.shortFingerprint)")
+            }
         }
     }
 
@@ -153,22 +237,28 @@ struct HostEditView: View {
             hostname: hostname,
             port: Int(port) ?? 22,
             username: username,
-            authMethod: .password,
+            authMethod: authMethod,
+            keyID: authMethod == .key ? selectedKeyID : nil,
             isFavorite: existingHost?.isFavorite ?? false,
             lastConnected: existingHost?.lastConnected
         )
 
         do {
-            if savePassword {
-                if !password.isEmpty {
-                    try KeychainService.shared.savePassword(password, for: host.id)
-                } else if !hasStoredCredential || showPasswordField {
-                    keychainErrorMessage = "Enter a password to save to Keychain."
-                    showKeychainError = true
-                    return
+            if authMethod == .password {
+                if savePassword {
+                    if !password.isEmpty {
+                        try KeychainService.shared.savePassword(password, for: host.id)
+                    } else if !hasStoredPasswordCredential || showPasswordField {
+                        keychainErrorMessage = "Enter a password to save to Keychain."
+                        showKeychainError = true
+                        return
+                    }
+                } else {
+                    try KeychainService.shared.deletePassword(for: host.id)
                 }
             } else {
-                try KeychainService.shared.deletePassword(for: host.id)
+                // Clean up password if switching to key auth
+                try? KeychainService.shared.deletePassword(for: host.id)
             }
 
             if existingHost != nil {
@@ -187,4 +277,6 @@ struct HostEditView: View {
 
 #Preview {
     HostEditView(hostStore: HostStore())
+        .environment(SSHKeyStore())
+        .environment(Settings())
 }

@@ -7,6 +7,7 @@ import SwiftUI
 
 struct HostListView: View {
     @Environment(HostStore.self) private var hostStore
+    @Environment(SSHKeyStore.self) private var keyStore
     @Environment(Settings.self) private var settings
 
     @State private var selectedHostID: Host.ID?
@@ -129,14 +130,19 @@ struct HostListView: View {
         }
         .sheet(isPresented: $showAddHost) {
             HostEditView(hostStore: hostStore)
+                .environment(keyStore)
+                .environment(settings)
                 .preferredColorScheme(settings.appTheme.colorScheme)
         }
         .sheet(item: $hostToEdit) { host in
             HostEditView(hostStore: hostStore, existingHost: host)
+                .environment(keyStore)
+                .environment(settings)
                 .preferredColorScheme(settings.appTheme.colorScheme)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+                .environment(keyStore)
                 .environment(settings)
                 .preferredColorScheme(settings.appTheme.colorScheme)
         }
@@ -290,5 +296,6 @@ struct EmptyHostsView: View {
 #Preview {
     HostListView()
         .environment(HostStore())
+        .environment(SSHKeyStore())
         .environment(Settings())
 }
