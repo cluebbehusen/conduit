@@ -43,3 +43,7 @@ make format && make lint
 Or just `make check` to verify without modifying files.
 
 Xcode also runs SwiftFormat and SwiftLint automatically on build.
+
+## Creating Pull Requests
+
+While commit messages should explain the "what", pull request descriptions should explain the "why". Also, do not include test plans in PR descriptions unless the user explicitly asks you to.
