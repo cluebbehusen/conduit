@@ -7,7 +7,9 @@ import SwiftUI
 
 struct TerminalContainerView: View {
     let host: Host
+    @Binding var showAddHost: Bool
 
+    @Environment(HostStore.self) private var hostStore
     @Environment(SecuritySettings.self) private var securitySettings
 
     @State private var sshService = SSHService()
@@ -16,10 +18,13 @@ struct TerminalContainerView: View {
     @State private var attemptedAutoConnect = false
     @State private var keychainErrorMessage: String?
     @State private var showKeychainError = false
+    @State private var ctrlActive = false
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color(uiColor: .systemBackground)
+                .ignoresSafeArea()
+                .backgroundExtensionEffect()
 
             switch sshService.state {
             case .disconnected(nil), .disconnected(.userInitiated):
@@ -35,19 +40,37 @@ struct TerminalContainerView: View {
                 connectingView
 
             case .connected:
-                SwiftTermView(sshService: sshService)
+                SwiftTermView(sshService: sshService, ctrlActive: $ctrlActive)
                     .ignoresSafeArea(.keyboard)
+                    .overlay(alignment: .bottomTrailing) {
+                        TerminalAccessoryFAB(
+                            sshService: sshService,
+                            mode: securitySettings.accessoryBarMode,
+                            ctrlActive: $ctrlActive,
+                            onKeyTap: {}
+                        )
+                    }
             }
         }
         .navigationTitle(host.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if sshService.state == .connected {
-                    Button("Disconnect") {
+            if sshService.state == .connected {
+                ToolbarItem {
+                    Button {
                         sshService.disconnect()
+                    } label: {
+                        Image(systemName: "network.slash")
                     }
+                }
+                ToolbarSpacer(.fixed)
+            }
+
+            ToolbarItem {
+                Button {
+                    showAddHost = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
         }
@@ -69,82 +92,133 @@ struct TerminalContainerView: View {
             Text(keychainErrorMessage ?? "Unknown error")
         }
         .onDisappear {
+            if sshService.state == .connected {
+                hostStore.markDisconnected(host)
+            }
             sshService.disconnect()
         }
         .task {
             await attemptAutoConnectIfPossible()
         }
+        .onChange(of: sshService.state) { oldState, newState in
+            if newState == .connected {
+                hostStore.recordConnection(for: host)
+                hostStore.markConnected(host)
+            } else if oldState == .connected {
+                hostStore.markDisconnected(host)
+            }
+        }
     }
 
     private var disconnectedView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "network.slash")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+        StatusCard {
+            VStack(spacing: 20) {
+                StatusIcon(systemName: "terminal", color: .secondary)
 
-            Text("Disconnected")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Text("Ready to Connect")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-            Button("Connect") {
-                Task {
-                    await connectTapped()
+                    Text(host.username + "@" + host.hostname)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
+
+                Button {
+                    Task {
+                        await connectTapped()
+                    }
+                } label: {
+                    Text("Connect")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
     private var sessionEndedView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+        StatusCard {
+            VStack(spacing: 20) {
+                StatusIcon(systemName: "checkmark.circle.fill", color: .green)
 
-            Text("Session Ended")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Text("Session Ended")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-            Button("Reconnect") {
-                Task {
-                    await connectTapped()
+                    Text("The connection was closed normally.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
+
+                Button {
+                    Task {
+                        await connectTapped()
+                    }
+                } label: {
+                    Text("Reconnect")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
     private var connectingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
+        StatusCard {
+            VStack(spacing: 20) {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .tint(.accentColor)
 
-            Text("Connecting to \(host.hostname)...")
-                .foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Text("Connecting...")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text(host.hostname)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
         }
     }
 
     private func errorView(message: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.red)
+        StatusCard {
+            VStack(spacing: 20) {
+                StatusIcon(systemName: "exclamationmark.triangle.fill", color: .red)
 
-            Text("Connection Error")
-                .font(.headline)
+                VStack(spacing: 8) {
+                    Text("Connection Failed")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            Button("Retry") {
-                Task {
-                    await connectTapped()
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
+
+                Button {
+                    Task {
+                        await connectTapped()
+                    }
+                } label: {
+                    Text("Retry")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
@@ -212,9 +286,36 @@ struct TerminalContainerView: View {
     }
 }
 
+// MARK: - Status Card
+
+private struct StatusCard<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(28)
+            .frame(maxWidth: 300)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
+
+// MARK: - Status Icon
+
+private struct StatusIcon: View {
+    let systemName: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 44))
+            .foregroundStyle(color)
+    }
+}
+
 #Preview {
     NavigationStack {
-        TerminalContainerView(host: .example)
+        TerminalContainerView(host: .example, showAddHost: .constant(false))
     }
+    .environment(HostStore())
     .environment(SecuritySettings())
 }

@@ -12,6 +12,8 @@ struct Host: Identifiable, Codable, Hashable {
     var port: Int = 22
     var username: String
     var authMethod: AuthMethod = .password
+    var isFavorite: Bool = false
+    var lastConnected: Date?
 
     var hasStoredCredential: Bool {
         KeychainService.shared.hasPassword(for: id)
@@ -29,4 +31,24 @@ extension Host {
         hostname: "192.168.1.100",
         username: "user"
     )
+
+    private static let lastConnectedFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
+
+    /// Formatted string for last connected time
+    var lastConnectedFormatted: String? {
+        guard let lastConnected else { return nil }
+
+        let secondsAgo = Date().timeIntervalSince(lastConnected)
+
+        // Show "just now" for very recent connections (within 60 seconds)
+        if secondsAgo < 60 {
+            return "just now"
+        }
+
+        return Self.lastConnectedFormatter.localizedString(for: lastConnected, relativeTo: Date())
+    }
 }

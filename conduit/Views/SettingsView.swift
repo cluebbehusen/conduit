@@ -19,6 +19,18 @@ struct SettingsView: View {
         @Bindable var settings = securitySettings
         NavigationStack {
             Form {
+                Section("Terminal") {
+                    Picker("Quick keys", selection: $settings.accessoryBarMode) {
+                        ForEach(AccessoryBarMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    Text("Quick access to special keys while typing.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Security") {
                     Picker("Auto-lock timeout", selection: $settings.autoLockTimeout) {
                         ForEach(timeoutOptions, id: \.value) { option in
@@ -44,8 +56,12 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Security")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(.regularMaterial)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

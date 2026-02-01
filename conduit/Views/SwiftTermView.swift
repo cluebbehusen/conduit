@@ -6,19 +6,98 @@
 import SwiftTerm
 import SwiftUI
 
+// MARK: - Terminal Theme
+
+struct TerminalTheme {
+    let background: UIColor
+    let foreground: UIColor
+    let cursor: UIColor
+
+    static func current(for style: UIUserInterfaceStyle) -> TerminalTheme {
+        switch style {
+        case .dark, .unspecified:
+            return TerminalTheme(
+                background: .black,
+                foreground: UIColor(red: 0.88, green: 0.88, blue: 0.90, alpha: 1.0),
+                cursor: UIColor(red: 0.55, green: 0.65, blue: 0.85, alpha: 1.0)
+            )
+        case .light:
+            return TerminalTheme(
+                background: .white,
+                foreground: UIColor(red: 0.12, green: 0.12, blue: 0.13, alpha: 1.0),
+                cursor: UIColor(red: 0.30, green: 0.40, blue: 0.70, alpha: 1.0)
+            )
+        @unknown default:
+            return current(for: .dark)
+        }
+    }
+}
+
+// MARK: - Padded Terminal Container
+
+/// A container view that wraps the terminal with proper padding
+final class PaddedTerminalContainer: UIView {
+    let terminalView: TerminalView
+    private let padding: UIEdgeInsets
+
+    init(terminalView: TerminalView, padding: UIEdgeInsets = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)) {
+        self.terminalView = terminalView
+        self.padding = padding
+        super.init(frame: .zero)
+        setupView()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupView() {
+        terminalView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(terminalView)
+
+        NSLayoutConstraint.activate([
+            terminalView.topAnchor.constraint(equalTo: topAnchor, constant: padding.top),
+            terminalView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding.left),
+            terminalView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding.right),
+            terminalView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding.bottom)
+        ])
+
+        applyTheme()
+    }
+
+    func applyTheme() {
+        let theme = TerminalTheme.current(for: traitCollection.userInterfaceStyle)
+        backgroundColor = theme.background
+        terminalView.nativeForegroundColor = theme.foreground
+        terminalView.nativeBackgroundColor = theme.background
+        terminalView.caretColor = theme.cursor
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            applyTheme()
+        }
+    }
+}
+
+// MARK: - SwiftTermView
+
 struct SwiftTermView: UIViewRepresentable {
     let sshService: SSHService
+    @Binding var ctrlActive: Bool
 
-    func makeUIView(context: Context) -> TerminalView {
+    func makeUIView(context: Context) -> PaddedTerminalContainer {
         let terminalView = TerminalView()
         terminalView.terminalDelegate = context.coordinator
-        terminalView.backgroundColor = .black
-        terminalView.nativeForegroundColor = .init(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
-        terminalView.nativeBackgroundColor = .black
 
         // Configure terminal appearance
         let font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         terminalView.font = font
+
+        // Hide the default keyboard accessory bar (we use our own SwiftUI FAB overlay)
+        terminalView.inputAccessoryView = UIView()
 
         // Store reference for feeding data
         context.coordinator.terminalView = terminalView
@@ -32,24 +111,26 @@ struct SwiftTermView: UIViewRepresentable {
             }
         }
 
-        return terminalView
-    }
-
-    func updateUIView(_ uiView: TerminalView, context: Context) {
-        // Nothing to update dynamically
+        return PaddedTerminalContainer(terminalView: terminalView)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(sshService: sshService)
+        Coordinator(sshService: sshService, ctrlActive: $ctrlActive)
+    }
+
+    func updateUIView(_ uiView: PaddedTerminalContainer, context: Context) {
+        context.coordinator.ctrlActive = $ctrlActive
     }
 
     @MainActor
     class Coordinator: NSObject, TerminalViewDelegate {
         let sshService: SSHService
         weak var terminalView: TerminalView?
+        var ctrlActive: Binding<Bool>
 
-        init(sshService: SSHService) {
+        init(sshService: SSHService, ctrlActive: Binding<Bool>) {
             self.sshService = sshService
+            self.ctrlActive = ctrlActive
         }
 
         func feed(_ data: Data) {
@@ -60,10 +141,43 @@ struct SwiftTermView: UIViewRepresentable {
         // MARK: - TerminalViewDelegate
 
         nonisolated func send(source: TerminalView, data: ArraySlice<UInt8>) {
-            let dataToSend = Data(data)
+            let bytes = Array(data)
             Task { @MainActor in
+                let dataToSend: Data
+                if ctrlActive.wrappedValue, bytes.count == 1 {
+                    // Reset Ctrl after any single-key press
+                    ctrlActive.wrappedValue = false
+                    if let transformed = applyCtrlModifier(bytes[0]) {
+                        dataToSend = Data([transformed])
+                    } else {
+                        dataToSend = Data(bytes)
+                    }
+                } else {
+                    dataToSend = Data(bytes)
+                }
                 sshService.send(dataToSend)
             }
+        }
+
+        /// Transforms a character byte to its corresponding control character.
+        /// Returns nil if the byte doesn't have a standard Ctrl mapping.
+        private func applyCtrlModifier(_ byte: UInt8) -> UInt8? {
+            // A-Z (0x41-0x5A) -> Ctrl+A (0x01) through Ctrl+Z (0x1A)
+            if byte >= 0x41, byte <= 0x5A {
+                return byte - 0x40
+            }
+            // a-z (0x61-0x7A) -> same transformation as uppercase
+            if byte >= 0x61, byte <= 0x7A {
+                return byte - 0x60
+            }
+            // Special characters: @[\]^_ and alternates 2, 6
+            // @=0x40->NUL, [=0x5B->ESC, \=0x5C->FS, ]=0x5D->GS, ^=0x5E->RS, _=0x5F->US
+            // 2=0x32->NUL (alt Ctrl+@), 6=0x36->RS (alt Ctrl+^)
+            let specialMappings: [UInt8: UInt8] = [
+                0x40: 0x00, 0x5B: 0x1B, 0x5C: 0x1C, 0x5D: 0x1D,
+                0x5E: 0x1E, 0x5F: 0x1F, 0x32: 0x00, 0x36: 0x1E
+            ]
+            return specialMappings[byte]
         }
 
         nonisolated func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {

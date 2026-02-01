@@ -12,6 +12,7 @@ final class HostStore {
     private static let hostsKey = "savedHosts"
 
     var hosts: [Host] = []
+    var connectedHostId: UUID?
 
     init() {
         load()
@@ -37,6 +38,44 @@ final class HostStore {
     func delete(at offsets: IndexSet) {
         hosts.remove(atOffsets: offsets)
         save()
+    }
+
+    func recordConnection(for host: Host) {
+        if let index = hosts.firstIndex(where: { $0.id == host.id }) {
+            hosts[index].lastConnected = Date()
+            save()
+        }
+    }
+
+    func markConnected(_ host: Host) {
+        connectedHostId = host.id
+    }
+
+    func markDisconnected(_ host: Host) {
+        if connectedHostId == host.id {
+            connectedHostId = nil
+        }
+    }
+
+    func isConnected(_ host: Host) -> Bool {
+        connectedHostId == host.id
+    }
+
+    func toggleFavorite(_ host: Host) {
+        if let index = hosts.firstIndex(where: { $0.id == host.id }) {
+            hosts[index].isFavorite.toggle()
+            save()
+        }
+    }
+
+    /// Returns hosts sorted by favorites first, then by name
+    var sortedHosts: [Host] {
+        hosts.sorted { lhs, rhs in
+            if lhs.isFavorite != rhs.isFavorite {
+                return lhs.isFavorite
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
     }
 
     private func save() {
