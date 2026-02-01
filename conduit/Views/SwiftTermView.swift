@@ -63,6 +63,10 @@ final class PaddedTerminalContainer: UIView {
             terminalView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding.bottom)
         ])
 
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in
+            self.applyTheme()
+        }
+
         applyTheme()
     }
 
@@ -72,13 +76,6 @@ final class PaddedTerminalContainer: UIView {
         terminalView.nativeForegroundColor = theme.foreground
         terminalView.nativeBackgroundColor = theme.background
         terminalView.caretColor = theme.cursor
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            applyTheme()
-        }
     }
 }
 

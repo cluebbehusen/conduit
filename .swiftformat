@@ -23,7 +23,11 @@
 
 # Rules to disable
 --disable redundantSelf
+--disable wrapPropertyBodies
 --enable trailingCommas
+
+# Modifier order (SwiftLint expects nonisolated before private)
+--modifier-order nonisolated,override,acl,setteracl,dynamic,mutators,lazy,final,required,convenience,typemethods,owned
 
 # File options
 --exclude .build,DerivedData

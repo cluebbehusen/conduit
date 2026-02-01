@@ -5,6 +5,7 @@
 
 import SwiftUI
 
+// swiftlint:disable:next type_body_length
 struct TerminalContainerView: View {
     let host: Host
     @Binding var showAddHost: Bool
@@ -33,11 +34,17 @@ struct TerminalContainerView: View {
             case .disconnected(.sessionEnded):
                 sessionEndedView
 
+            case .disconnected(.hostKeyRejected):
+                hostKeyRejectedView
+
             case let .disconnected(.error(message)):
                 errorView(message: message)
 
             case .connecting:
                 connectingView
+
+            case .verifyingHostKey:
+                hostKeyVerificationView
 
             case .connected:
                 SwiftTermView(sshService: sshService, ctrlActive: $ctrlActive)
@@ -143,14 +150,14 @@ struct TerminalContainerView: View {
     private var sessionEndedView: some View {
         StatusCard {
             VStack(spacing: 20) {
-                StatusIcon(systemName: "checkmark.circle.fill", color: .green)
+                StatusIcon(systemName: "terminal", color: .secondary)
 
                 VStack(spacing: 8) {
                     Text("Session Ended")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text("The connection was closed normally.")
+                    Text(host.username + "@" + host.hostname)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -188,6 +195,66 @@ struct TerminalContainerView: View {
                 }
             }
             .padding(.vertical, 8)
+        }
+    }
+
+    @ViewBuilder
+    private var hostKeyVerificationView: some View {
+        if let pendingKey = sshService.pendingHostKey {
+            if pendingKey.isKeyChange {
+                HostKeyChangedView(
+                    pendingKey: pendingKey,
+                    onTrustNewKey: {
+                        sshService.approveHostKey()
+                    },
+                    onCancel: {
+                        sshService.rejectHostKey()
+                    }
+                )
+            } else {
+                HostKeyVerificationView(
+                    pendingKey: pendingKey,
+                    onTrust: {
+                        sshService.approveHostKey()
+                    },
+                    onCancel: {
+                        sshService.rejectHostKey()
+                    }
+                )
+            }
+        } else {
+            connectingView
+        }
+    }
+
+    private var hostKeyRejectedView: some View {
+        StatusCard {
+            VStack(spacing: 20) {
+                StatusIcon(systemName: "xmark.shield.fill", color: .orange)
+
+                VStack(spacing: 8) {
+                    Text("Connection Canceled")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Text("Host key verification was declined.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                Button {
+                    Task {
+                        await connectTapped()
+                    }
+                } label: {
+                    Text("Try Again")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            }
         }
     }
 

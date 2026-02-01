@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(Settings.self) private var settings
 
     @State private var showClearAlert = false
+    @State private var showClearKnownHostsAlert = false
     @State private var clearError: String?
 
     private let timeoutOptions: [(label: String, value: TimeInterval)] = [
@@ -58,6 +59,11 @@ struct SettingsView: View {
                     } label: {
                         Label("Clear saved passwords", systemImage: "trash")
                     }
+                    Button(role: .destructive) {
+                        showClearKnownHostsAlert = true
+                    } label: {
+                        Label("Clear known hosts", systemImage: "key")
+                    }
                     if let clearError {
                         Text(clearError)
                             .font(.footnote)
@@ -88,6 +94,19 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This removes all passwords stored in the Keychain for Conduit.")
+            }
+            .alert("Clear known hosts?", isPresented: $showClearKnownHostsAlert) {
+                Button("Delete", role: .destructive) {
+                    KnownHostsService.shared.removeAllKnownHosts()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    """
+                    This removes all trusted host fingerprints. \
+                    You will need to verify each host again on next connection.
+                    """
+                )
             }
         }
     }
