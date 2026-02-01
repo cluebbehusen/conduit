@@ -39,7 +39,7 @@ enum AppTheme: String, CaseIterable {
 
 @MainActor
 @Observable
-final class SecuritySettings {
+final class Settings {
     private enum Keys {
         static let autoLockTimeout = "security.autoLockTimeout"
         static let lastUnlock = "security.lastUnlock"

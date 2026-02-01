@@ -10,14 +10,14 @@ import SwiftUI
 @main
 struct ConduitApp: App {
     @State private var hostStore = HostStore()
-    @State private var securitySettings = SecuritySettings()
+    @State private var settings = Settings()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(hostStore)
-                .environment(securitySettings)
-                .preferredColorScheme(securitySettings.appTheme.colorScheme)
+                .environment(settings)
+                .preferredColorScheme(settings.appTheme.colorScheme)
         }
     }
 }

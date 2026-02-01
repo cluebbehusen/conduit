@@ -16,5 +16,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(HostStore())
-        .environment(SecuritySettings())
+        .environment(Settings())
 }
