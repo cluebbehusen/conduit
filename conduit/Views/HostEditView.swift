@@ -58,8 +58,11 @@ struct HostEditView: View {
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
 
-                    TextField("Port", text: $port)
-                        .keyboardType(.numberPad)
+                    LabeledContent("Port") {
+                        TextField("22", text: $port)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
 
                 Section("Authentication") {
@@ -107,6 +110,10 @@ struct HostEditView: View {
             }
             .navigationTitle(existingHost == nil ? "Add Host" : "Edit Host")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(.regularMaterial)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -146,7 +153,9 @@ struct HostEditView: View {
             hostname: hostname,
             port: Int(port) ?? 22,
             username: username,
-            authMethod: .password
+            authMethod: .password,
+            isFavorite: existingHost?.isFavorite ?? false,
+            lastConnected: existingHost?.lastConnected
         )
 
         do {
