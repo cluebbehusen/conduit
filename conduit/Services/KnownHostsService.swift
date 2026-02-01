@@ -10,9 +10,11 @@ final class KnownHostsService {
     static let shared = KnownHostsService()
 
     private let storageKey = "com.conduit.knownHosts"
+    private let defaults: UserDefaults
     private var knownHosts: [String: KnownHost] = [:]
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         loadKnownHosts()
     }
 
@@ -100,6 +102,11 @@ final class KnownHostsService {
         knownHosts.count
     }
 
+    /// Check if there are no known hosts
+    var isEmpty: Bool {
+        knownHosts.isEmpty
+    }
+
     // MARK: - Fingerprint Calculation
 
     /// Calculate SHA256 fingerprint from raw public key data
@@ -111,7 +118,7 @@ final class KnownHostsService {
     // MARK: - Persistence
 
     private func loadKnownHosts() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+        guard let data = defaults.data(forKey: storageKey) else {
             return
         }
 
@@ -130,7 +137,7 @@ final class KnownHostsService {
             let encoder = JSONEncoder()
             let hosts = Array(knownHosts.values)
             let data = try encoder.encode(hosts)
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         } catch {
             // Silently fail - not critical
         }

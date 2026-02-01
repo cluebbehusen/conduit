@@ -54,6 +54,8 @@ final class Settings {
         static let appTheme = "appearance.theme"
     }
 
+    private let defaults: UserDefaults
+
     /// Time in seconds before requiring another biometric unlock.
     var autoLockTimeout: TimeInterval {
         didSet {
@@ -65,34 +67,36 @@ final class Settings {
     /// Controls how the terminal accessory bar is displayed.
     var accessoryBarMode: AccessoryBarMode {
         didSet {
-            UserDefaults.standard.set(accessoryBarMode.rawValue, forKey: Keys.accessoryBarMode)
+            defaults.set(accessoryBarMode.rawValue, forKey: Keys.accessoryBarMode)
         }
     }
 
     /// Controls the app's color scheme (light, dark, or system).
     var appTheme: AppTheme {
         didSet {
-            UserDefaults.standard.set(appTheme.rawValue, forKey: Keys.appTheme)
+            defaults.set(appTheme.rawValue, forKey: Keys.appTheme)
         }
     }
 
     private var lastUnlockDate: Date? {
         didSet {
             if let lastUnlockDate {
-                UserDefaults.standard.set(lastUnlockDate, forKey: Keys.lastUnlock)
+                defaults.set(lastUnlockDate, forKey: Keys.lastUnlock)
             } else {
-                UserDefaults.standard.removeObject(forKey: Keys.lastUnlock)
+                defaults.removeObject(forKey: Keys.lastUnlock)
             }
         }
     }
 
-    init() {
-        let storedTimeout = UserDefaults.standard.object(forKey: Keys.autoLockTimeout) as? TimeInterval
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+
+        let storedTimeout = defaults.object(forKey: Keys.autoLockTimeout) as? TimeInterval
         autoLockTimeout = storedTimeout ?? 300 // 5 minutes default
 
-        lastUnlockDate = UserDefaults.standard.object(forKey: Keys.lastUnlock) as? Date
+        lastUnlockDate = defaults.object(forKey: Keys.lastUnlock) as? Date
 
-        if let storedMode = UserDefaults.standard.string(forKey: Keys.accessoryBarMode),
+        if let storedMode = defaults.string(forKey: Keys.accessoryBarMode),
            let mode = AccessoryBarMode(rawValue: storedMode)
         {
             accessoryBarMode = mode
@@ -100,7 +104,7 @@ final class Settings {
             accessoryBarMode = .collapsed // Default
         }
 
-        if let storedTheme = UserDefaults.standard.string(forKey: Keys.appTheme),
+        if let storedTheme = defaults.string(forKey: Keys.appTheme),
            let theme = AppTheme(rawValue: storedTheme)
         {
             appTheme = theme
@@ -123,7 +127,7 @@ final class Settings {
     }
 
     private func save() {
-        UserDefaults.standard.set(autoLockTimeout, forKey: Keys.autoLockTimeout)
+        defaults.set(autoLockTimeout, forKey: Keys.autoLockTimeout)
         if isLocked() {
             resetUnlock()
         }

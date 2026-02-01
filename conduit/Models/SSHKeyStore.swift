@@ -11,9 +11,11 @@ import SwiftUI
 final class SSHKeyStore {
     private static let keysKey = "savedSSHKeys"
 
+    private let defaults: UserDefaults
     var keys: [SSHKey] = []
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -50,12 +52,12 @@ final class SSHKeyStore {
 
     private func save() {
         if let data = try? JSONEncoder().encode(keys) {
-            UserDefaults.standard.set(data, forKey: Self.keysKey)
+            defaults.set(data, forKey: Self.keysKey)
         }
     }
 
     private func load() {
-        if let data = UserDefaults.standard.data(forKey: Self.keysKey),
+        if let data = defaults.data(forKey: Self.keysKey),
            let decoded = try? JSONDecoder().decode([SSHKey].self, from: data)
         {
             keys = decoded

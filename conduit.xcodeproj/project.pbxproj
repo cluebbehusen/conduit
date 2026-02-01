@@ -11,11 +11,27 @@
 		DAEF71482F2E81FF0034E5D0 /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = DAEF71472F2E81FF0034E5D0 /* Citadel */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		DA02E0052F2FF55B005DD296 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DAEF712A2F2E80340034E5D0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DAEF71312F2E80340034E5D0;
+			remoteInfo = conduit;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		DA02E0012F2FF55B005DD296 /* conduitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = conduitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAEF71322F2E80340034E5D0 /* conduit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = conduit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		DA02E0022F2FF55B005DD296 /* conduitTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = conduitTests;
+			sourceTree = "<group>";
+		};
 		DAEF71342F2E80340034E5D0 /* conduit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = conduit;
@@ -24,6 +40,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		DA02DFFE2F2FF55B005DD296 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DAEF712F2F2E80340034E5D0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -40,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				DAEF71342F2E80340034E5D0 /* conduit */,
+				DA02E0022F2FF55B005DD296 /* conduitTests */,
 				DAEF71332F2E80340034E5D0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				DAEF71322F2E80340034E5D0 /* conduit.app */,
+				DA02E0012F2FF55B005DD296 /* conduitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,6 +80,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		DA02E0002F2FF55B005DD296 /* conduitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA02E0072F2FF55B005DD296 /* Build configuration list for PBXNativeTarget "conduitTests" */;
+			buildPhases = (
+				DA02DFFD2F2FF55B005DD296 /* Sources */,
+				DA02DFFE2F2FF55B005DD296 /* Frameworks */,
+				DA02DFFF2F2FF55B005DD296 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA02E0062F2FF55B005DD296 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA02E0022F2FF55B005DD296 /* conduitTests */,
+			);
+			name = conduitTests;
+			packageProductDependencies = (
+			);
+			productName = conduitTests;
+			productReference = DA02E0012F2FF55B005DD296 /* conduitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		DAEF71312F2E80340034E5D0 /* conduit */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DAEF713D2F2E80350034E5D0 /* Build configuration list for PBXNativeTarget "conduit" */;
@@ -91,6 +139,10 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					DA02E0002F2FF55B005DD296 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = DAEF71312F2E80340034E5D0;
+					};
 					DAEF71312F2E80340034E5D0 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -115,11 +167,19 @@
 			projectRoot = "";
 			targets = (
 				DAEF71312F2E80340034E5D0 /* conduit */,
+				DA02E0002F2FF55B005DD296 /* conduitTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		DA02DFFF2F2FF55B005DD296 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DAEF71302F2E80340034E5D0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -171,6 +231,13 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		DA02DFFD2F2FF55B005DD296 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DAEF712E2F2E80340034E5D0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -180,7 +247,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		DA02E0062F2FF55B005DD296 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DAEF71312F2E80340034E5D0 /* conduit */;
+			targetProxy = DA02E0052F2FF55B005DD296 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		DA02E0082F2FF55B005DD296 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.luebbehusen.conduitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/conduit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/conduit";
+			};
+			name = Debug;
+		};
+		DA02E0092F2FF55B005DD296 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.luebbehusen.conduitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/conduit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/conduit";
+			};
+			name = Release;
+		};
 		DAEF713B2F2E80350034E5D0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -311,17 +428,19 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock saved passwords.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.luebbehusen.conduit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -345,17 +464,19 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock saved passwords.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.luebbehusen.conduit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -371,6 +492,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		DA02E0072F2FF55B005DD296 /* Build configuration list for PBXNativeTarget "conduitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA02E0082F2FF55B005DD296 /* Debug */,
+				DA02E0092F2FF55B005DD296 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		DAEF712D2F2E80340034E5D0 /* Build configuration list for PBXProject "conduit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

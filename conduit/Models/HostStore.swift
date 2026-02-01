@@ -11,10 +11,12 @@ import SwiftUI
 final class HostStore {
     private static let hostsKey = "savedHosts"
 
+    private let defaults: UserDefaults
     var hosts: [Host] = []
     var connectedHostId: UUID?
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -80,12 +82,12 @@ final class HostStore {
 
     private func save() {
         if let data = try? JSONEncoder().encode(hosts) {
-            UserDefaults.standard.set(data, forKey: Self.hostsKey)
+            defaults.set(data, forKey: Self.hostsKey)
         }
     }
 
     private func load() {
-        if let data = UserDefaults.standard.data(forKey: Self.hostsKey),
+        if let data = defaults.data(forKey: Self.hostsKey),
            let decoded = try? JSONDecoder().decode([Host].self, from: data)
         {
             hosts = decoded
