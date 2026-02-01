@@ -14,6 +14,9 @@ struct HostListView: View {
     @State private var hostToEdit: Host?
     @State private var showSettings = false
     @State private var searchText = ""
+    @State private var showSwitchConfirmation = false
+    @State private var pendingHostID: Host.ID?
+    @State private var isConfirmedSwitch = false
 
     private var filteredHosts: [Host] {
         let sorted = hostStore.sortedHosts
@@ -100,6 +103,7 @@ struct HostListView: View {
                let host = hostStore.hosts.first(where: { $0.id == hostID })
             {
                 TerminalContainerView(host: host, showAddHost: $showAddHost)
+                    .id(hostID)
             } else {
                 NoHostSelectedView(showAddHost: $showAddHost)
             }
@@ -116,6 +120,48 @@ struct HostListView: View {
             SettingsView()
                 .environment(settings)
                 .preferredColorScheme(settings.appTheme.colorScheme)
+        }
+        .confirmationDialog(
+            "Switch Host?",
+            isPresented: $showSwitchConfirmation,
+            presenting: pendingHostID
+        ) { hostID in
+            if let host = hostStore.hosts.first(where: { $0.id == hostID }) {
+                Button("Switch to \(host.name)") {
+                    isConfirmedSwitch = true
+                    selectedHostID = hostID
+                    pendingHostID = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingHostID = nil
+            }
+        } message: { _ in
+            if let currentId = hostStore.connectedHostId,
+               let currentHost = hostStore.hosts.first(where: { $0.id == currentId })
+            {
+                Text("This will disconnect from \(currentHost.name).")
+            }
+        }
+        .onChange(of: selectedHostID) { oldValue, newValue in
+            // Skip if this is a confirmed switch from the dialog
+            if isConfirmedSwitch {
+                isConfirmedSwitch = false
+                return
+            }
+
+            // If we're connected to a host and selecting a different one, intercept
+            guard let connectedId = hostStore.connectedHostId,
+                  let newValue,
+                  connectedId != newValue
+            else {
+                return
+            }
+
+            // Revert selection and show confirmation
+            selectedHostID = oldValue
+            pendingHostID = newValue
+            showSwitchConfirmation = true
         }
     }
 }
