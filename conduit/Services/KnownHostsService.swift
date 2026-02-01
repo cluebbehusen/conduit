@@ -103,7 +103,7 @@ final class KnownHostsService {
     // MARK: - Fingerprint Calculation
 
     /// Calculate SHA256 fingerprint from raw public key data
-    static func calculateFingerprint(from publicKeyData: Data) -> String {
+    nonisolated static func calculateFingerprint(from publicKeyData: Data) -> String {
         let hash = SHA256.hash(data: publicKeyData)
         return hash.map { String(format: "%02x", $0) }.joined(separator: ":")
     }

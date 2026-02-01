@@ -283,26 +283,22 @@ final class SSHService {
 
     // MARK: - Host Key Utilities
 
-    private func extractKeyType(from hostKey: NIOSSHPublicKey) -> String {
-        // Extract key type from the key's string description
-        let description = String(describing: hostKey)
-
-        // The description typically contains the key type
-        if description.contains("ed25519") || description.contains("Ed25519") {
-            return "ssh-ed25519"
-        } else if description.contains("P256") || description.contains("nistp256") {
-            return "ecdsa-sha2-nistp256"
-        } else if description.contains("P384") || description.contains("nistp384") {
-            return "ecdsa-sha2-nistp384"
-        } else if description.contains("P521") || description.contains("nistp521") {
-            return "ecdsa-sha2-nistp521"
-        } else if description.contains("RSA") || description.contains("rsa") {
-            return "ssh-rsa"
-        }
-        return "unknown"
+    nonisolated private func extractKeyType(from hostKey: NIOSSHPublicKey) -> String {
+        let description = String(describing: hostKey).lowercased()
+        let keyTypes: [(pattern: String, type: String)] = [
+            ("ed25519", "ssh-ed25519"),
+            ("p256", "ecdsa-sha2-nistp256"),
+            ("nistp256", "ecdsa-sha2-nistp256"),
+            ("p384", "ecdsa-sha2-nistp384"),
+            ("nistp384", "ecdsa-sha2-nistp384"),
+            ("p521", "ecdsa-sha2-nistp521"),
+            ("nistp521", "ecdsa-sha2-nistp521"),
+            ("rsa", "ssh-rsa")
+        ]
+        return keyTypes.first { description.contains($0.pattern) }?.type ?? "unknown"
     }
 
-    private func calculateFingerprint(from hostKey: NIOSSHPublicKey) -> String {
+    nonisolated private func calculateFingerprint(from hostKey: NIOSSHPublicKey) -> String {
         // Since NIOSSHPublicKey doesn't expose raw bytes publicly,
         // we use the string description to generate a stable fingerprint
         let description = String(describing: hostKey)

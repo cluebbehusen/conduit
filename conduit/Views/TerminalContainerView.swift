@@ -150,14 +150,14 @@ struct TerminalContainerView: View {
     private var sessionEndedView: some View {
         StatusCard {
             VStack(spacing: 20) {
-                StatusIcon(systemName: "checkmark.circle.fill", color: .green)
+                StatusIcon(systemName: "terminal", color: .secondary)
 
                 VStack(spacing: 8) {
                     Text("Session Ended")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text("The connection was closed normally.")
+                    Text(host.username + "@" + host.hostname)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
