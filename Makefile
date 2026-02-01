@@ -1,4 +1,4 @@
-.PHONY: lint format format-check build clean
+.PHONY: lint format format-check build clean test
 
 # Lint Swift files
 lint:
@@ -18,6 +18,10 @@ check: format-check lint
 # Build the project
 build:
 	xcodebuild -scheme conduit -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
+
+# Run tests
+test:
+	xcodebuild test -scheme conduit -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -only-testing:conduitTests
 
 # Clean build artifacts
 clean:

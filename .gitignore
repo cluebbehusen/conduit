@@ -13,3 +13,7 @@ Packages/
 
 # Dependencies resolved (optional - can include if you want lockfile)
 # *.resolved
+
+# Feature specs (internal planning docs)
+features.md
+.vscode
