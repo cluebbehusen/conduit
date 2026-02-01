@@ -89,7 +89,9 @@ final class SSHService {
             fingerprint: pending.fingerprint
         )
 
-        // Resume connection by succeeding the promise
+        // Resume connection - transition back to connecting state so that
+        // subsequent errors (e.g., wrong password) aren't misclassified as host key rejections
+        state = .connecting
         pendingHostKey = nil
         hostKeyValidationPromise?.succeed(())
         hostKeyValidationPromise = nil
@@ -299,10 +301,11 @@ final class SSHService {
     }
 
     nonisolated private func calculateFingerprint(from hostKey: NIOSSHPublicKey) -> String {
-        // Since NIOSSHPublicKey doesn't expose raw bytes publicly,
-        // we use the string description to generate a stable fingerprint
-        let description = String(describing: hostKey)
-        let keyData = Data(description.utf8)
+        // Serialize the key using the public write(to:) method which outputs
+        // the canonical SSH wire format (algorithm prefix + key material)
+        var buffer = ByteBufferAllocator().buffer(capacity: 256)
+        hostKey.write(to: &buffer)
+        let keyData = Data(buffer.readableBytesView)
         return KnownHostsService.calculateFingerprint(from: keyData)
     }
 }
