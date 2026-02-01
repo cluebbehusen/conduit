@@ -17,6 +17,7 @@ struct ConduitApp: App {
             ContentView()
                 .environment(hostStore)
                 .environment(securitySettings)
+                .preferredColorScheme(securitySettings.appTheme.colorScheme)
         }
     }
 }

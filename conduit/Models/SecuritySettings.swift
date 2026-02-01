@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum AccessoryBarMode: String, CaseIterable {
     case hidden
@@ -14,6 +15,28 @@ enum AccessoryBarMode: String, CaseIterable {
     }
 }
 
+enum AppTheme: String, CaseIterable {
+    case system
+    case light
+    case dark
+
+    var displayName: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class SecuritySettings {
@@ -21,6 +44,7 @@ final class SecuritySettings {
         static let autoLockTimeout = "security.autoLockTimeout"
         static let lastUnlock = "security.lastUnlock"
         static let accessoryBarMode = "terminal.accessoryBarMode"
+        static let appTheme = "appearance.theme"
     }
 
     /// Time in seconds before requiring another biometric unlock.
@@ -35,6 +59,13 @@ final class SecuritySettings {
     var accessoryBarMode: AccessoryBarMode {
         didSet {
             UserDefaults.standard.set(accessoryBarMode.rawValue, forKey: Keys.accessoryBarMode)
+        }
+    }
+
+    /// Controls the app's color scheme (light, dark, or system).
+    var appTheme: AppTheme {
+        didSet {
+            UserDefaults.standard.set(appTheme.rawValue, forKey: Keys.appTheme)
         }
     }
 
@@ -60,6 +91,14 @@ final class SecuritySettings {
             accessoryBarMode = mode
         } else {
             accessoryBarMode = .collapsed // Default
+        }
+
+        if let storedTheme = UserDefaults.standard.string(forKey: Keys.appTheme),
+           let theme = AppTheme(rawValue: storedTheme)
+        {
+            appTheme = theme
+        } else {
+            appTheme = .system // Default
         }
     }
 

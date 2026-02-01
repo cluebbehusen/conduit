@@ -19,6 +19,15 @@ struct SettingsView: View {
         @Bindable var settings = securitySettings
         NavigationStack {
             Form {
+                Section("Appearance") {
+                    Picker("Theme", selection: $settings.appTheme) {
+                        ForEach(AppTheme.allCases, id: \.self) { theme in
+                            Text(theme.displayName).tag(theme)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
                 Section("Terminal") {
                     Picker("Quick keys", selection: $settings.accessoryBarMode) {
                         ForEach(AccessoryBarMode.allCases, id: \.self) { mode in
