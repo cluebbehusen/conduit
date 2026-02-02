@@ -25,6 +25,8 @@ struct HostEditView: View {
     @State private var showKeychainError = false
     @State private var keychainErrorMessage = ""
     @State private var showKeyList = false
+    @State private var isSaving = false
+    @State private var savePasswordChanged = false
 
     init(hostStore: HostStore, existingHost: Host? = nil) {
         self.hostStore = hostStore
@@ -115,9 +117,11 @@ struct HostEditView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        save()
+                        Task {
+                            await save()
+                        }
                     }
-                    .disabled(!isValid)
+                    .disabled(!isValid || isSaving)
                 }
             }
             .onChange(of: authMethod) { _, newValue in
@@ -130,6 +134,7 @@ struct HostEditView: View {
                 }
             }
             .onChange(of: savePassword) { _, newValue in
+                savePasswordChanged = true
                 if newValue {
                     if !hasStoredPasswordCredential {
                         showPasswordField = true
@@ -230,7 +235,10 @@ struct HostEditView: View {
         }
     }
 
-    private func save() {
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+
         let host = Host(
             id: existingHost?.id ?? UUID(),
             name: name,
@@ -247,30 +255,44 @@ struct HostEditView: View {
             if authMethod == .password {
                 if savePassword {
                     if !password.isEmpty {
+                        // Authenticate with Face ID before saving to keychain
+                        try await KeychainService.shared.authenticateForSave(
+                            prompt: "Authenticate to save password for \(name)"
+                        )
                         try KeychainService.shared.savePassword(password, for: host.id)
                     } else if !hasStoredPasswordCredential || showPasswordField {
                         keychainErrorMessage = "Enter a password to save to Keychain."
                         showKeychainError = true
                         return
                     }
-                } else {
+                    // If savePassword is true but password is empty and hasStoredPasswordCredential is true,
+                    // we keep the existing password (no action needed)
+                } else if savePasswordChanged {
+                    // Only delete password if user explicitly toggled savePassword OFF
                     try KeychainService.shared.deletePassword(for: host.id)
                 }
+                // If savePassword is false but user didn't change it, don't delete existing password
             } else {
                 // Clean up password if switching to key auth
                 try? KeychainService.shared.deletePassword(for: host.id)
             }
 
-            if existingHost != nil {
-                hostStore.update(host)
-            } else {
-                hostStore.add(host)
+            await MainActor.run {
+                if existingHost != nil {
+                    hostStore.update(host)
+                } else {
+                    hostStore.add(host)
+                }
+                dismiss()
             }
-
-            dismiss()
+        } catch KeychainService.KeychainError.userCanceled {
+            // User canceled Face ID, don't show error
+            return
         } catch {
-            keychainErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            showKeychainError = true
+            await MainActor.run {
+                keychainErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                showKeychainError = true
+            }
         }
     }
 }
