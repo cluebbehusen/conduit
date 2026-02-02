@@ -235,6 +235,7 @@ struct HostEditView: View {
         }
     }
 
+    @MainActor
     private func save() async {
         isSaving = true
         defer { isSaving = false }
@@ -277,22 +278,18 @@ struct HostEditView: View {
                 try? KeychainService.shared.deletePassword(for: host.id)
             }
 
-            await MainActor.run {
-                if existingHost != nil {
-                    hostStore.update(host)
-                } else {
-                    hostStore.add(host)
-                }
-                dismiss()
+            if existingHost != nil {
+                hostStore.update(host)
+            } else {
+                hostStore.add(host)
             }
+            dismiss()
         } catch KeychainService.KeychainError.userCanceled {
             // User canceled Face ID, don't show error
             return
         } catch {
-            await MainActor.run {
-                keychainErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                showKeychainError = true
-            }
+            keychainErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            showKeychainError = true
         }
     }
 }
