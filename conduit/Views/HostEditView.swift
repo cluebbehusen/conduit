@@ -84,7 +84,7 @@ struct HostEditView: View {
 
                 Section("Authentication") {
                     TextField("Username", text: $username)
-                        .textContentType(.username)
+                        .textContentType(.none)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 
