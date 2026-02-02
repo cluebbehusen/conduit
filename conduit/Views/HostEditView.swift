@@ -84,7 +84,7 @@ struct HostEditView: View {
 
                 Section("Authentication") {
                     TextField("Username", text: $username)
-                        .textContentType(.username)
+                        .textContentType(.none)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 
@@ -182,8 +182,9 @@ struct HostEditView: View {
                 }
 
                 if !hasStoredPasswordCredential || showPasswordField {
+                    // Use .oneTimeCode to prevent iOS from offering to save to Apple Passwords
                     SecureField("Password", text: $password)
-                        .textContentType(.none)
+                        .textContentType(.oneTimeCode)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     if hasStoredPasswordCredential, showPasswordField {

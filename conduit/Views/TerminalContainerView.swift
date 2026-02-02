@@ -3,6 +3,8 @@
 //  conduit
 //
 
+// swiftlint:disable file_length
+
 import SwiftUI
 
 // swiftlint:disable:next type_body_length
@@ -85,8 +87,9 @@ struct TerminalContainerView: View {
             }
         }
         .alert("Enter Password", isPresented: $showPasswordPrompt) {
+            // Use .oneTimeCode to prevent iOS offering to save to Apple Passwords
             SecureField("Password", text: $password)
-                .textContentType(.none)
+                .textContentType(.oneTimeCode)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Connect") {
@@ -97,8 +100,9 @@ struct TerminalContainerView: View {
             Text("Enter password for \(host.username)@\(host.hostname)")
         }
         .alert("Enter Key Passphrase", isPresented: $showKeyPassphrasePrompt) {
+            // Use .oneTimeCode to prevent iOS from offering to save to Apple Passwords
             SecureField("Passphrase", text: $keyPassphrase)
-                .textContentType(.none)
+                .textContentType(.oneTimeCode)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Connect") {

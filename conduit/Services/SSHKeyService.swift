@@ -49,6 +49,7 @@ final class SSHKeyService {
 
     static let shared = SSHKeyService()
     private let service = "com.conduit.sshkeys"
+    private var cachedKeys: [UUID: CachedKey] = [:]
 
     private init() {}
 
@@ -326,11 +327,17 @@ final class SSHKeyService {
         prompt: String,
         reuseInterval: TimeInterval
     ) async throws -> String {
-        let context = try contextForKeychain(prompt: prompt, reuseInterval: reuseInterval)
+        // Check cache first
+        if reuseInterval > 0,
+           let cached = cachedKeys[keyID],
+           cached.expiry > Date()
+        {
+            return cached.content
+        }
 
         var query = baseQuery(for: keyID)
         query[kSecReturnData as String] = true
-        query[kSecUseAuthenticationContext as String] = context
+        query[kSecUseOperationPrompt as String] = prompt
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -342,14 +349,26 @@ final class SSHKeyService {
             else {
                 throw KeyServiceError.keyNotFound
             }
+            // Cache the key for reuse interval
+            if reuseInterval > 0 {
+                cachedKeys[keyID] = CachedKey(
+                    content: content,
+                    expiry: Date().addingTimeInterval(reuseInterval)
+                )
+            }
             return content
         case errSecItemNotFound:
+            cachedKeys.removeValue(forKey: keyID)
             throw KeyServiceError.keyNotFound
         case errSecUserCanceled, errSecAuthFailed:
             throw KeychainService.KeychainError.userCanceled
         default:
             throw KeyServiceError.unexpectedStatus(status)
         }
+    }
+
+    func invalidateCachedKeys() {
+        cachedKeys.removeAll()
     }
 
     func deletePrivateKey(for keyID: UUID) throws {
@@ -390,17 +409,9 @@ private extension SSHKeyService {
         }
         return control
     }
+}
 
-    func contextForKeychain(prompt: String, reuseInterval: TimeInterval) throws -> LAContext {
-        let context = LAContext()
-        context.localizedReason = prompt
-        context.touchIDAuthenticationAllowableReuseDuration = reuseInterval
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            throw KeychainService.KeychainError.biometryNotAvailable(
-                error?.localizedDescription ?? "Biometrics or passcode is not configured."
-            )
-        }
-        return context
-    }
+private struct CachedKey {
+    let content: String
+    let expiry: Date
 }
