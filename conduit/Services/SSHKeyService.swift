@@ -324,13 +324,11 @@ final class SSHKeyService {
     func retrievePrivateKey(
         for keyID: UUID,
         prompt: String,
-        reuseInterval: TimeInterval
+        reuseInterval _: TimeInterval
     ) async throws -> String {
-        let context = try contextForKeychain(prompt: prompt, reuseInterval: reuseInterval)
-
         var query = baseQuery(for: keyID)
         query[kSecReturnData as String] = true
-        query[kSecUseAuthenticationContext as String] = context
+        query[kSecUseOperationPrompt as String] = prompt
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -389,18 +387,5 @@ private extension SSHKeyService {
             throw KeyServiceError.unexpectedStatus(errSecParam)
         }
         return control
-    }
-
-    func contextForKeychain(prompt: String, reuseInterval: TimeInterval) throws -> LAContext {
-        let context = LAContext()
-        context.localizedReason = prompt
-        context.touchIDAuthenticationAllowableReuseDuration = reuseInterval
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            throw KeychainService.KeychainError.biometryNotAvailable(
-                error?.localizedDescription ?? "Biometrics or passcode is not configured."
-            )
-        }
-        return context
     }
 }
