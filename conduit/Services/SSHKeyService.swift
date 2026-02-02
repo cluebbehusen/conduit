@@ -49,6 +49,7 @@ final class SSHKeyService {
 
     static let shared = SSHKeyService()
     private let service = "com.conduit.sshkeys"
+    private var cachedKeys: [UUID: CachedKey] = [:]
 
     private init() {}
 
@@ -324,8 +325,16 @@ final class SSHKeyService {
     func retrievePrivateKey(
         for keyID: UUID,
         prompt: String,
-        reuseInterval _: TimeInterval
+        reuseInterval: TimeInterval
     ) async throws -> String {
+        // Check cache first
+        if reuseInterval > 0,
+           let cached = cachedKeys[keyID],
+           cached.expiry > Date()
+        {
+            return cached.content
+        }
+
         var query = baseQuery(for: keyID)
         query[kSecReturnData as String] = true
         query[kSecUseOperationPrompt as String] = prompt
@@ -340,14 +349,26 @@ final class SSHKeyService {
             else {
                 throw KeyServiceError.keyNotFound
             }
+            // Cache the key for reuse interval
+            if reuseInterval > 0 {
+                cachedKeys[keyID] = CachedKey(
+                    content: content,
+                    expiry: Date().addingTimeInterval(reuseInterval)
+                )
+            }
             return content
         case errSecItemNotFound:
+            cachedKeys.removeValue(forKey: keyID)
             throw KeyServiceError.keyNotFound
         case errSecUserCanceled, errSecAuthFailed:
             throw KeychainService.KeychainError.userCanceled
         default:
             throw KeyServiceError.unexpectedStatus(status)
         }
+    }
+
+    func invalidateCachedKeys() {
+        cachedKeys.removeAll()
     }
 
     func deletePrivateKey(for keyID: UUID) throws {
@@ -388,4 +409,9 @@ private extension SSHKeyService {
         }
         return control
     }
+}
+
+private struct CachedKey {
+    let content: String
+    let expiry: Date
 }

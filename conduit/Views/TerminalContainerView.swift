@@ -3,6 +3,8 @@
 //  conduit
 //
 
+// swiftlint:disable file_length
+
 import SwiftUI
 
 // swiftlint:disable:next type_body_length
@@ -85,8 +87,7 @@ struct TerminalContainerView: View {
             }
         }
         .alert("Enter Password", isPresented: $showPasswordPrompt) {
-            // Use .oneTimeCode to prevent iOS from offering to save to Apple Passwords.
-            // Using .none or .password still triggers the save prompt.
+            // Use .oneTimeCode to prevent iOS offering to save to Apple Passwords
             SecureField("Password", text: $password)
                 .textContentType(.oneTimeCode)
                 .textInputAutocapitalization(.never)
