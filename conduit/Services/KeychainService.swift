@@ -135,10 +135,9 @@ final class KeychainService {
             return cached.password
         }
 
-        let context = try contextForKeychain(prompt: prompt, reuseInterval: reuseInterval)
         let data: Data
         do {
-            data = try readPassword(for: hostID, prompt: prompt, context: context)
+            data = try readPassword(for: hostID, prompt: prompt)
         } catch {
             clearCachedPassword(for: hostID)
             throw error
@@ -182,24 +181,13 @@ final class KeychainService {
         clearCachedPasswordCache()
     }
 
-    private func contextForKeychain(prompt: String, reuseInterval: TimeInterval) throws -> LAContext {
-        let context = LAContext()
-        context.localizedReason = prompt
-        context.touchIDAuthenticationAllowableReuseDuration = reuseInterval
-
-        var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            throw KeychainError.biometryNotAvailable(
-                error?.localizedDescription ?? "Biometrics or passcode is not configured."
-            )
-        }
-        return context
-    }
-
-    private func readPassword(for hostID: UUID, prompt: String, context: LAContext) throws -> Data {
+    /// Reads password from keychain, letting the system handle Face ID/Touch ID authentication.
+    /// Uses kSecUseOperationPrompt instead of a custom LAContext to avoid issues with
+    /// LAContext state that can cause "max authentication attempts" errors.
+    private func readPassword(for hostID: UUID, prompt: String) throws -> Data {
         var query: [String: Any] = baseQuery(for: hostID)
         query[kSecReturnData as String] = true
-        query[kSecUseAuthenticationContext as String] = context
+        query[kSecUseOperationPrompt as String] = prompt
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
