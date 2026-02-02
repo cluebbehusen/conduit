@@ -85,8 +85,10 @@ struct TerminalContainerView: View {
             }
         }
         .alert("Enter Password", isPresented: $showPasswordPrompt) {
+            // Use .oneTimeCode to prevent iOS from offering to save to Apple Passwords.
+            // Using .none or .password still triggers the save prompt.
             SecureField("Password", text: $password)
-                .textContentType(.none)
+                .textContentType(.oneTimeCode)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Connect") {
@@ -97,8 +99,9 @@ struct TerminalContainerView: View {
             Text("Enter password for \(host.username)@\(host.hostname)")
         }
         .alert("Enter Key Passphrase", isPresented: $showKeyPassphrasePrompt) {
+            // Use .oneTimeCode to prevent iOS from offering to save to Apple Passwords
             SecureField("Passphrase", text: $keyPassphrase)
-                .textContentType(.none)
+                .textContentType(.oneTimeCode)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Connect") {
