@@ -58,12 +58,53 @@ final class KeychainService {
         }
     }
 
+    /// Authenticates the user with Face ID/Touch ID before saving.
+    /// Call this before savePassword to ensure the user has granted biometric permission
+    /// and to provide a consistent UX where the user authenticates when saving credentials.
+    func authenticateForSave(prompt: String) async throws {
+        let context = LAContext()
+        context.localizedReason = prompt
+
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            throw KeychainError.biometryNotAvailable(
+                error?.localizedDescription ?? "Biometrics or passcode is not configured."
+            )
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: prompt) { success, error in
+                if success {
+                    continuation.resume()
+                } else if let error = error as? NSError {
+                    if error.code == LAError.userCancel.rawValue {
+                        continuation.resume(throwing: KeychainError.userCanceled)
+                    } else {
+                        continuation.resume(throwing: KeychainError.authenticationFailed)
+                    }
+                } else {
+                    continuation.resume(throwing: KeychainError.authenticationFailed)
+                }
+            }
+        }
+    }
+
     func savePassword(_ password: String, for hostID: UUID) throws {
         guard let data = password.data(using: .utf8) else {
             throw KeychainError.invalidPasswordData
         }
 
         let accessControl = try makeAccessControl()
+
+        // Delete any existing item first to avoid issues with updating protected items.
+        // SecItemUpdate on items with .userPresence access control requires authentication,
+        // so we delete and re-add instead.
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: hostID.uuidString
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -75,25 +116,11 @@ final class KeychainService {
 
         let status = SecItemAdd(query as CFDictionary, nil)
 
-        if status == errSecDuplicateItem {
-            let updateQuery: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: service,
-                kSecAttrAccount as String: hostID.uuidString
-            ]
-
-            let attributes: [String: Any] = [kSecValueData as String: data]
-            let updateStatus = SecItemUpdate(updateQuery as CFDictionary, attributes as CFDictionary)
-            if updateStatus != errSecSuccess {
-                throw KeychainError.unexpectedStatus(updateStatus)
-            }
-            clearCachedPassword(for: hostID)
-            return
-        }
-
         guard status == errSecSuccess else {
             throw KeychainError.unexpectedStatus(status)
         }
+
+        clearCachedPassword(for: hostID)
     }
 
     func retrievePassword(
