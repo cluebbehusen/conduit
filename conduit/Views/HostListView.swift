@@ -114,8 +114,10 @@ struct HostListView: View {
             .overlay {
                 if hostStore.hosts.isEmpty {
                     EmptyHostsView(showAddHost: $showAddHost)
+                        .ignoresSafeArea(.keyboard)
                 } else if filteredHosts.isEmpty {
                     ContentUnavailableView.search(text: searchText)
+                        .ignoresSafeArea(.keyboard)
                 }
             }
         } detail: {
@@ -126,6 +128,7 @@ struct HostListView: View {
                     .id(hostID)
             } else {
                 NoHostSelectedView(showAddHost: $showAddHost)
+                    .ignoresSafeArea(.keyboard)
             }
         }
         .sheet(isPresented: $showAddHost) {
