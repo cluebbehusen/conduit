@@ -47,6 +47,10 @@ struct SwiftTermView: UIViewRepresentable {
         terminalView.isOpaque = true
         terminalView.contentInsetAdjustmentBehavior = .never
 
+        // Add padding around terminal content using scroll view's native contentInset
+        // This preserves padding without interfering with scroll/sizing behavior
+        terminalView.contentInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+
         // Use Menlo for better glyph coverage (icons, box drawing, etc.)
         // Fall back to system monospace if Menlo unavailable
         let font: UIFont
