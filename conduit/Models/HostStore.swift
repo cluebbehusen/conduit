@@ -33,11 +33,18 @@ final class HostStore {
     }
 
     func delete(_ host: Host) {
+        if connectedHostId == host.id {
+            connectedHostId = nil
+        }
         hosts.removeAll { $0.id == host.id }
         save()
     }
 
     func delete(at offsets: IndexSet) {
+        let idsToDelete = Set(offsets.map { hosts[$0].id })
+        if let connectedId = connectedHostId, idsToDelete.contains(connectedId) {
+            connectedHostId = nil
+        }
         hosts.remove(atOffsets: offsets)
         save()
     }

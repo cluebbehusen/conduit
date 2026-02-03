@@ -170,6 +170,14 @@ struct HostListView: View {
                 Text("This will disconnect from \(currentHost.name).")
             }
         }
+        .onChange(of: hostStore.hosts) {
+            // Clear selection if the selected host was deleted
+            if let selectedID = selectedHostID,
+               !hostStore.hosts.contains(where: { $0.id == selectedID })
+            {
+                selectedHostID = nil
+            }
+        }
     }
 }
 
