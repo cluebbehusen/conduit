@@ -33,68 +33,40 @@ struct TerminalTheme {
     }
 }
 
-// MARK: - Padded Terminal Container
-
-/// A container view that wraps the terminal with proper padding
-final class PaddedTerminalContainer: UIView {
-    let terminalView: TerminalView
-    private let padding: UIEdgeInsets
-
-    init(terminalView: TerminalView, padding: UIEdgeInsets = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)) {
-        self.terminalView = terminalView
-        self.padding = padding
-        super.init(frame: .zero)
-        setupView()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    private func setupView() {
-        terminalView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(terminalView)
-
-        NSLayoutConstraint.activate([
-            terminalView.topAnchor.constraint(equalTo: topAnchor, constant: padding.top),
-            terminalView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding.left),
-            terminalView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding.right),
-            terminalView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding.bottom)
-        ])
-
-        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in
-            self.applyTheme()
-        }
-
-        applyTheme()
-    }
-
-    func applyTheme() {
-        let theme = TerminalTheme.current(for: traitCollection.userInterfaceStyle)
-        backgroundColor = theme.background
-        terminalView.nativeForegroundColor = theme.foreground
-        terminalView.nativeBackgroundColor = theme.background
-        terminalView.caretColor = theme.cursor
-    }
-}
-
 // MARK: - SwiftTermView
 
 struct SwiftTermView: UIViewRepresentable {
     let sshService: SSHService
     @Binding var ctrlActive: Bool
 
-    func makeUIView(context: Context) -> PaddedTerminalContainer {
+    func makeUIView(context: Context) -> TerminalView {
         let terminalView = TerminalView()
         terminalView.terminalDelegate = context.coordinator
 
-        // Configure terminal appearance
-        let font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        terminalView.font = font
+        // Critical rendering configuration
+        terminalView.isOpaque = true
+        terminalView.contentInsetAdjustmentBehavior = .never
+
+        // Use Menlo for better glyph coverage (icons, box drawing, etc.)
+        // Fall back to system monospace if Menlo unavailable
+        terminalView.font = if let menlo = UIFont(name: "Menlo-Regular", size: 14) {
+            menlo
+        } else {
+            UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        }
+
+        // Apply theme colors before first render
+        let theme = TerminalTheme.current(for: terminalView.traitCollection.userInterfaceStyle)
+        terminalView.nativeBackgroundColor = theme.background
+        terminalView.nativeForegroundColor = theme.foreground
+        terminalView.caretColor = theme.cursor
+
+        // Match keyboard appearance to terminal theme
+        terminalView.keyboardAppearance = terminalView.traitCollection.userInterfaceStyle == .dark ? .dark : .light
 
         // Hide the default keyboard accessory bar (we use our own SwiftUI FAB overlay)
-        terminalView.inputAccessoryView = UIView()
+        // Use nil instead of empty UIView to avoid layout issues
+        terminalView.inputAccessoryView = nil
 
         // Store reference for feeding data
         context.coordinator.terminalView = terminalView
@@ -108,14 +80,23 @@ struct SwiftTermView: UIViewRepresentable {
             }
         }
 
-        return PaddedTerminalContainer(terminalView: terminalView)
+        // Register for trait changes to update theme
+        terminalView.registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (tv: TerminalView, _) in
+            let newTheme = TerminalTheme.current(for: tv.traitCollection.userInterfaceStyle)
+            tv.nativeBackgroundColor = newTheme.background
+            tv.nativeForegroundColor = newTheme.foreground
+            tv.caretColor = newTheme.cursor
+            tv.keyboardAppearance = tv.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
+
+        return terminalView
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(sshService: sshService, ctrlActive: $ctrlActive)
     }
 
-    func updateUIView(_ uiView: PaddedTerminalContainer, context: Context) {
+    func updateUIView(_ uiView: TerminalView, context: Context) {
         context.coordinator.ctrlActive = $ctrlActive
     }
 

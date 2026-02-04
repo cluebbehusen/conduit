@@ -26,6 +26,16 @@
 		DAEF71322F2E80340034E5D0 /* conduit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = conduit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DAEABF602F3360A000382010 /* Exceptions for "conduit" folder in "conduit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DAEF71312F2E80340034E5D0 /* conduit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DA02E0022F2FF55B005DD296 /* conduitTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -34,6 +44,9 @@
 		};
 		DAEF71342F2E80340034E5D0 /* conduit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DAEABF602F3360A000382010 /* Exceptions for "conduit" folder in "conduit" target */,
+			);
 			path = conduit;
 			sourceTree = "<group>";
 		};
@@ -439,7 +452,9 @@
 				DEVELOPMENT_TEAM = 8NP2XF23V6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = conduit/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock saved passwords.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -478,7 +493,9 @@
 				DEVELOPMENT_TEAM = 8NP2XF23V6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = conduit/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock saved passwords.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
