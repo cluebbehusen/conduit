@@ -53,6 +53,8 @@ struct TerminalContainerView: View {
 
             case .connected:
                 SwiftTermView(sshService: sshService, ctrlActive: $ctrlActive)
+                    .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    .background(Color(UIColor { $0.userInterfaceStyle == .dark ? .black : .white }))
                     .ignoresSafeArea(.keyboard)
                     .overlay(alignment: .bottomTrailing) {
                         TerminalAccessoryFAB(

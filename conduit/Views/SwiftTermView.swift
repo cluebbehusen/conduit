@@ -43,23 +43,17 @@ struct SwiftTermView: UIViewRepresentable {
         let terminalView = TerminalView()
         terminalView.terminalDelegate = context.coordinator
 
-        // Critical rendering configuration - match SwiftTerm sample app
+        // Critical rendering configuration
         terminalView.isOpaque = true
         terminalView.contentInsetAdjustmentBehavior = .never
 
-        // Add padding around terminal content using scroll view's native contentInset
-        // This preserves padding without interfering with scroll/sizing behavior
-        terminalView.contentInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
-
         // Use Menlo for better glyph coverage (icons, box drawing, etc.)
         // Fall back to system monospace if Menlo unavailable
-        let font: UIFont
-        if let menlo = UIFont(name: "Menlo-Regular", size: 14) {
-            font = menlo
+        terminalView.font = if let menlo = UIFont(name: "Menlo-Regular", size: 14) {
+            menlo
         } else {
-            font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         }
-        terminalView.font = font
 
         // Apply theme colors before first render
         let theme = TerminalTheme.current(for: terminalView.traitCollection.userInterfaceStyle)
